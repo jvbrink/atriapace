@@ -1,0 +1,74 @@
+#**************************************************************************
+# A 4v Fenton-Karma model trying to reproduce the results of the Koivumaki
+# nSR model for a healthy human atrial myocyte.
+#**************************************************************************
+
+#**********************************************
+# States 
+#**********************************************
+
+states(V = 0) # Transmembrane potential
+states(v = 1) # gating variables
+states(w = 1) # gating variables
+states(d = 0) # gating variables
+
+#**********************************************
+# Parameters
+#**********************************************
+
+parameters(Vo = 0.0)
+parameters(Vm = 1.0) #Vm related to maximum AP, set to 1
+parameters(Vna = 0.23) #Vna threshold. Vm,Vna have little effect on APD
+parameters(Vc = 0.33215242) # threshold
+parameters(Vv = 0.67095874) # fast gate threshold, determines whethere tvm or tvmm is active (chaos 8)
+parameters(Vw = 0.27314403) # slow gate threshold
+parameters(Vd = 0.33471235) # threshold
+parameters(tvm = 122.36631378) # controls minimum diastolic interval where CV occurs (chaos 8)
+parameters(tvp = 2.00966394) # fast gate closing time
+parameters(twm  = 210.11018188) # slow gate opening time (changes APD shape?)
+parameters(twp = 627.77222072) # slow gate closing time (shifts APD up/down?)
+parameters(tsp = 0.38651189) # d-gate variables
+parameters(tsm = 0.27632535) #
+parameters(Vcsi = 0.23248197) # 
+parameters(xk  = 5.81406155) # typically around 10
+parameters(td = 0.04237912) # fast current time variable, determines max CV
+parameters(to  = 22.18688450) # ungated time constant
+parameters(tsoa = 47.70819517) # curve shape/APD, ungated time, adjusts DI
+parameters(tsob = 2.44640465) # ungated time. Easily adjusts DI, changes APD
+parameters(Vso = 0.60666388) #
+parameters(xtso = 5.85023408) #
+parameters(tsi = 46.51758570) # slow current time variable, max APD
+parameters(D = 0.00091753) # related to density, mostly changes CV, but can effect everything
+parameters(tvmm = 1300.32077428) # controls the steepness of the CV curve (chaos 8)
+
+#**********************************************
+# Stimulus
+#**********************************************
+parameters(stim_offset = 0,
+           stim_period = 1000,
+           stim_duration = 1,
+           stim_amplitude = -0.4)
+past = floor(time/stim_period)*stim_period
+ist = Conditional(And(Ge(time - past, stim_offset), Le(time - past, stim_offset + stim_duration), ), stim_amplitude, 0)
+
+
+#**********************************************
+# Analytical equations
+#**********************************************
+
+tso = tsoa + (tsob-tsoa)*(1+tanh((V-Vso)*xtso))/2.0
+xfi = -v*Conditional(Ge(V,Vna),1,0)*(V-Vna)*(Vm-V)/td
+xso = (V-Vo)*(1 - Conditional(Ge(V,Vc),1,0))/to + Conditional(Ge(V,Vc),1,0)/tso
+xsi = -w*d/tsi
+
+##**********************************************
+## Differential equations
+##**********************************************
+
+dV_dt = -(xfi + xso + xsi + ist)
+dv_dt = (1 - Conditional(Ge(V,Vna),1,0))*(1 - v)/((1 - Conditional(Ge(V,Vv),1,0))*tvm + tvmm*Conditional(Ge(V,Vv),1,0)) - Conditional(Ge(V,Vna),1,0)*v/tvp
+dw_dt = (1 - Conditional(Ge(V,Vw),1,0))*(1-w)/twm - Conditional(Ge(V,Vw),1,0)*w/twp
+dd_dt = ((1 - Conditional(Ge(V,Vd),1,0))/tsm + Conditional(Ge(V,Vd),1,0)/tsp)*((1+tanh(xk*(V-Vcsi)))/2.0-d)
+
+
+
