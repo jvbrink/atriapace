@@ -1,6 +1,7 @@
 from dolfin import *
 from gotran import load_ode
 from goss import dolfin_jit
+# Beatadjoint -> cbc.beat
 from beatadjoint.cardiacmodels import CardiacModel
 from beatadjoint.gossplittingsolver import GOSSplittingSolver
 import numpy as np
