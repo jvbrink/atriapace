@@ -1,7 +1,7 @@
 """
 Create resitution curves showing conduction velocity against BCL.
 Uses gotran ODE models and goss to solve them. The spatial diffusion
-model is solved using dolfin and beatadjoint. Uses operator splitting in 
+model is solved using dolfin and cbcbeat. Uses operator splitting in 
 a 1D cable domain.
 
 Protocol:
@@ -15,8 +15,8 @@ of roughly 750 mm/s at a BCL of 1000 ms.
 from dolfin import *
 from gotran import load_ode
 from goss import dolfin_jit
-from beatadjoint.cardiacmodels import CardiacModel
-from beatadjoint.gossplittingsolver import GOSSplittingSolver
+from cbcbeat.cardiacmodels import CardiacModel
+from cbcbeat.gossplittingsolver import GOSSplittingSolver
 import numpy as np
 
 # Import function for pacing 0D cell model to find quasi steady-state
@@ -32,7 +32,7 @@ def GOSSparams():
     params["pde_solver"] = "monodomain"
     params["MonodomainSolver"]["linear_solver_type"] = "iterative"
     params["MonodomainSolver"]["theta"] = 1.0
-    params["ode_solver"]["scheme"] = "RL1"
+    params["ode_solver"]["solver"] = "RL1"
     params["apply_stimulus_current_to_pde"] = False
     return params
 
@@ -89,11 +89,13 @@ def pacing_cv(ode, BCL_range, D, dt, threshold=0, stim_amp=0, plot_args=None):
         results[0][i] = BCL
         print "BCL: %g" % BCL
         # Do 3 pulses
+
         for pulsenr in range(1,4):
             # Solve the pulse in higher temporal resolution
             for timestep, (u, vm) in solver.solve((i*BCL, i*BCL+50), dt):
                 if plot_args: plot(u, **plot_args)
-            
+                print "Testing"
+
                 x = u.vector()[20]
                 y = u.vector()[35]
 
@@ -111,9 +113,12 @@ def pacing_cv(ode, BCL_range, D, dt, threshold=0, stim_amp=0, plot_args=None):
                 yp = y
                 tp = timestep[0]
 
+            print "adada"
+
             # Wait for next pulse
             for timestep, (u, vm) in solver.solve((i*BCL+50, (i+1)*BCL), dt_low):
                 if plot_args: plot(u, **plot_args)
+
 
     np.save("../data/results/cv_%s"%ode, results) 
 
