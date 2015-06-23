@@ -33,7 +33,7 @@ def pacing_S1S2(ode, S1, S2_range, dt, threshold=-60):
 
     def pulse_S2(S2):
         """Pulse the steady state with a single S2 pulse and measure APD/DI."""
-        states = init_states
+        states = init_states.copy()
         model_params[BCL_index] = S2
 
         t = 0.; tstop = 2*S2
