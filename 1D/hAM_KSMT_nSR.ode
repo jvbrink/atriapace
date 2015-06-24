@@ -1,0 +1,430 @@
+#**************************************************************************
+# Human atrial myocyte model
+#
+# Citation:
+# Koivumaki JT, Korhonen T, Tavi P (2011) 
+# Impact of Sarcoplasmic Reticulum Calcium Release on Calcium Dynamics and
+# Action Potential Morphology in Human Atrial Myocytes: A Computational Study.
+# PLoS Comput Biol 7(1): e1001067.
+# http://dx.doi.org/10.1371/journal.pcbi.1001067
+#**************************************************************************
+
+states(V = -75.20, INam = 0.002854, INah1 = 0.9001, INah2 = 0.9003, ICaLd = 0.00001104, ICaLf1 = 0.9988, ICaLf2 = 0.9988, ICaLfca = 0.9226, Itr = 0.0009795, Its = 0.9535, Isusr = 0.0003196, Isuss = 0.9726, IKsn = 0.004421, IKrpa = 0.00004354, Ify = 0.05500, RyRoss = 0.00005934, RyRcss = 0.9999, RyRass = 0.2453, RyRo1 = 0.0001916, RyRc1 = 0.9970, RyRa1 = 0.2033, RyRo2 = 0.0001485, RyRc2 = 0.9985, RyRa2 = 0.2106, RyRo3 = 0.0001010, RyRc3 = 0.9993, RyRa3 = 0.2229, SERCACa1 = 0.005351, SERCACa2 = 0.005213, SERCACa3 = 0.005020, SERCACass = 0.004891, Nass = 8.513, Nai = 8.851, Ki = 135.2, Cass = 0.0001737, Cai1 = 0.0001672, Cai2 = 0.0001670, Cai3 = 0.0001680, Cai4 = 0.0001719, CaSR1 = 0.5755, CaSR2 = 0.5664, CaSR3 = 0.5535, CaSR4 = 0.5428)
+
+
+#**********************************************
+# Globals
+#**********************************************
+#global stim INa ICaL It Isus IKr IKs IK1 INab ICab ICaP INaK INaCa If Jrelss Jrel1 Jrel2 Jrel3 J_bulkSERCA1 J_bulkSERCA2 J_bulkSERCA3 J_bulkSERCAss JSRCaleak1 JSRCaleak2 JSRCaleak3 JSRCaleakss
+
+#**********************************************
+# Stimulus
+#**********************************************
+parameters(stim_offset = 0,
+           stim_period = 1000,
+           stim_duration = 1,
+           stim_amplitude = -1410*2)
+past = floor(time/stim_period)*stim_period
+ist = Conditional(And(Ge(time - past, stim_offset), Le(time - past, stim_offset + stim_duration), ), stim_amplitude, 0)
+
+#**********************************************
+# Model variant
+#**********************************************
+
+# nSR
+cAF_lcell = 1; cAF_gCaL = 1; cAF_gt = 1; cAF_gsus = 1; cAF_gK1 = 1; cAF_kNaCa = 1; cAF_cpumps = 1; cAF_PLB = 1; cAF_SLN = 1; cAF_phos = 1; cAF_RyR = 1;
+
+# cAF
+#cAF_lcell = 1.10; cAF_gCaL = 0.41; cAF_gt = 0.38; cAF_gsus = 0.62; cAF_gK1 = 1.62; cAF_kNaCa = 1.50; cAF_cpumps = 0.84; cAF_PLB = 1.18; cAF_SLN = 0.60; cAF_phos = 2; cAF_RyR = 2;
+
+#**********************************************
+# Numerical parameters
+#**********************************************
+
+# Physical & environmental constants
+
+F = 96487
+R = 8314
+T = 306.15
+
+parameters(Nao = 130)
+parameters(Cao = 1.8)
+parameters(Ko = 5.4)
+
+parameters(Cm = 0.05) #nF
+
+# Cell dilation in cAF
+Ddcell = (cAF_lcell - 1) * (20/10) + 1
+Dvcell = cAF_lcell * Ddcell**2
+
+# Geometry
+Vss = 4.99232e-5 * Dvcell #nL
+rjunct = 6.5 * Ddcell # mum
+lcell = 122.051 * cAF_lcell # mum
+
+# Ca diffusion grid
+dx = 1.625 * Ddcell # mum
+#rstart = 0 + 0.5*dx
+#rend = rjunct - 0.5*dx
+#j = round(rstart/dx):1:round(rjunct/dx) # Spatial index of Cai diffusion
+#j = j'
+
+Aj_nj = pi*rjunct*2*lcell*0.5 # Area between junct and nonjunct
+xj_nj = 0.02/2 * Ddcell + dx/2 # diffusion distance from center to center of junct to first njunct
+xj_nj_Nai = 0.02/2 * Ddcell + 2*dx # diffusion distance from center of junct to center of njunct (between 2nd and 3rd njunct)
+
+# Diffusion compartment volumes (uses j^2-(j-1)^2 = 2*j - 1)
+Vnonjunct1 = pi*lcell*1e-6*0.5*dx*dx
+Vnonjunct2 = 3*Vnonjunct1
+Vnonjunct3 = 5*Vnonjunct1
+Vnonjunct4 = 7*Vnonjunct1
+
+Vcytosol = 16*Vnonjunct1 + Vss
+
+VSR1 = 0.05*Vnonjunct1/2*0.9 / Dvcell
+VSR2 = 0.05*Vnonjunct2/2*0.9 / Dvcell
+VSR3 = 0.05*Vnonjunct3/2*0.9 / Dvcell
+VSR4 = 0.05*Vnonjunct4/2*0.9 / Dvcell
+
+Vnonjunct_Nai = 16*Vnonjunct1
+
+
+
+# Cytosol Ca Buffers
+parameters(BCa = 24e-3)
+parameters(SLlow = 165)
+parameters(SLhigh = 13)
+
+parameters(KdBCa = 2.38e-3)
+parameters(KdSLlow = 1.1)
+parameters(KdSLhigh = 13e-3)
+
+# SR Ca buffers
+parameters(CSQN =  6.7)
+parameters(KdCSQN = 0.8)
+
+# Sarcolemmal Na burrering
+# Area relation to Grandi et al. model 6.5**2 * pi() * 122 / (10.25**2 * pi() * 100) = 0.49
+# Bmax = 7.651*0.11 + 1.65*0.89 = 2.31
+parameters(BNa = 0.49 * 2.31)
+parameters(KdBNa = 10)
+
+# Ion channel conductances & permeabilities & other parameters
+
+parameters(PNa = 0.0018)
+
+parameters(ECa_app = 60)
+gCaL = 15 * cAF_gCaL 
+parameters(kCan = 2)
+parameters(kCa = 0.6e-3)
+
+gt = 8.25 * cAF_gt
+gsus = 2.25 * cAF_gsus
+parameters(gKs = 1)
+gKr = 0.5 * cAF_gK1
+parameters(gK1 = 3.45)
+parameters(gNab = 0.060599)
+parameters(gCab = 0.0952)
+
+parameters(INaKmax = 70.8253)
+parameters(kNaKK = 1)
+parameters(kNaKNa = 11)
+
+parameters(ICaPmax = 2.0)
+parameters(kCaP = 0.0005)
+
+kNaCa = 0.0084 * cAF_kNaCa
+parameters(gam = 0.45)
+parameters(dNaCa = 0.0003)
+
+parameters(gIf = 1)
+
+# Ca and Na diffusion
+parameters(DCa = 780) # um2/s
+parameters(DCaSR = 44)
+parameters(DCaBm = 25) # um2/s
+
+#DNa = 0.17 # Despa et al. (2002) 0.12 um2/s, Shannon et al. (2004)
+#1.79E-5 cm2/s = 1790 um2/s, Grandi et al. (2009) 1.2722E-6 cm2/s = 127um/s
+parameters(DNa = 0.12)
+
+# SERCA parameters
+base_phos = 0.1 * cAF_phos # Baseline phosphorylation
+PLB_SERCA_ratio = cAF_PLB
+SLN_SERCA_ratio = cAF_SLN
+parameters(Kmf_PLBKO = 0.15e-3)
+parameters(Kmf_PLB = 0.12e-3)
+parameters(Kmf_SLN = 0.07e-3)
+parameters(Kmr_PLBKO = 2.5)
+parameters(Kmr_PLB = 0.88)
+parameters(Kmr_SLN = 0.5)
+SERCAKmf = Kmf_PLBKO + Kmf_PLB * PLB_SERCA_ratio * (1 - base_phos) + Kmf_SLN * SLN_SERCA_ratio * (1 - base_phos)
+SERCAKmr = Kmr_PLBKO - Kmr_PLB * PLB_SERCA_ratio * (1 - base_phos) - Kmr_SLN * SLN_SERCA_ratio * (1 - base_phos)
+parameters(k4 = 13)  # pump rate
+k3 = k4 / SERCAKmr**2
+k1 = 1000**2 * k4
+k2 = k1 * SERCAKmf**2
+cpumps = 30e-3 / Dvcell * cAF_cpumps # pump concentration in cytosol volume
+
+# SR Ca leak
+parameters(kSRleak = 6e-3) 
+
+
+#**********************************************
+# Analytical equations
+#**********************************************
+
+# Reversal potentials
+ENa = R*T/F * log ( Nao / Nass )
+EK = R*T/F * log ( Ko / Ki )
+ECa = R*T/F/2 * log ( Cao / Cass )
+
+# INa
+INa = PNa * INam**3 * ( 0.9*INah1 + 0.1*INah2) * Nao * V * F**2/(R*T) * ( exp( (V-ENa)*F/R/T ) - 1) / ( exp( V*F/R/T ) - 1)
+INaminf = 1/(1+exp((V+27.12)/-8.21))
+INahinf = 1/(1+exp((V+63.6)/5.3))
+INamtau = 0.000042*exp( -((V+25.57)/28.8)**2 ) + 0.000024
+INah1tau = 0.03/(1+exp((V+35.1)/3.2)) + 0.0003
+INah2tau = 0.12/(1+exp((V+35.1)/3.2)) + 0.003
+
+# ICaL
+ICaLfcainf = 1-1 / ( 1 + (kCa/Cass)**(kCan))
+ICaL = gCaL *(ICaLd) * (ICaLfca) * (ICaLf2) * (V - ECa_app)
+ICaLdinf = 1/(1+exp((V+9)/-5.8))
+ICaLfinf = 0.04 + 0.96 / (1 + exp((V + 25.5)/8.4)) + 1 / (1 + exp(-(V - 60)/8.0))
+ICaLdtau = 0.00065*exp( -((V+35)/30)**2 ) + 0.0005
+ICaLf1tau = 0.98698*exp( -((V+30.16047)/7.09396)**2 ) + 0.04275/(1+exp((V-51.61555)/-80.61331)) + 0.03576/(1+exp((V+29.57272)/13.21758)) - 0.00821
+ICaLf2tau = 1.34*exp( -((V+40)/14.2)**2 ) + 0.04
+ICaLfcatau = 2e-3
+
+# It
+It = gt * (Itr) * (Its) * (V - EK)
+Itrinf = 1/(1+exp((V-1)/-11))
+Itsinf = 1/(1+exp((V+40.5)/11.5))
+Itrtau = 0.0035*exp( -((V+0)/30)**2 ) + 0.0015
+#Itstau = 0.4812*exp( -((V+52.45)/14.97)**2 ) + 0.01414
+Itstau = 0.025635*exp( -((V+52.45)/15.8827)**2 ) + 0.01414 # Maleckar et al.
+
+# Isus
+Isus = gsus * (Isusr) * (Isuss) * (V - EK)
+#Isusrinf = 1/(1+exp((V+4.3)/-8))
+Isusrinf = 1/(1 + exp((V + 6)/-8.6)) # Maleckar et al.
+#Isussinf = 0.4/(1+exp((V+20)/10)) + 0.6
+Isussinf = 1/(1 + exp((V + 7.5)/10)) # Maleckar et al.
+#Isusrtau = 0.009/(1+exp((V+5)/12)) + 0.0005
+Isusrtau = 0.009/(1 + exp((V + 5)/12)) + 0.0005 # Maleckar et al.
+#Isusstau = 0.047/(1+exp((V+60)/10)) + 0.3
+Isusstau = 0.59/(1 + exp((V + 60)/10)) + 3.05 # Maleckar et al.
+
+# IKs
+IKs = gKs * (IKsn) * (V - EK)
+IKsninf = 1/(1+exp((V-19.9)/-12.7))
+IKsntau = 0.4*exp( -((V-20)/20)**2 ) + 0.7
+
+# IKr
+IKrpi = 1/(1+exp((V+55)/24))
+IKr = gKr * (IKrpa) * IKrpi * (V - EK)
+IKrpainf = 1/(1+exp((V+15)/-6))
+IKrpatau = 0.21718*exp( -((V+20.1376)/22.1996)**2 ) + 0.03118
+
+# IK1
+IK1 = gK1 * Ko**0.4457 * (V - EK) / (1+exp(1.5*(V-EK+3.6)*F/R/T))
+
+# Background leaks
+INab = gNab * (V - ENa)
+ICab = gCab * (V - ECa)
+
+# INaK
+INaK = INaKmax * Ko/(Ko + kNaKK) * Nass**1.5/(Nass**1.5+kNaKNa**1.5) * (V + 150) / (V + 200)
+
+# INaCa
+fCaNCX = 1
+INaCa = kNaCa * ( (exp( gam*V*F/R/T ) * Nass**3 * Cao - exp( (gam-1)*V*F/R/T ) * Nao**3 * Cass*fCaNCX ) / ( 1 + dNaCa*(Nao**3 * Cass*fCaNCX + Nass**3 * Cao) ) )
+
+# ICaP
+ICaP = ICaPmax * Cass / (kCaP + Cass)
+
+# If, Zorn-Pauly LAW fit
+Ifyinf = 1 / (1 + exp((V+97.82874)/12.48025))
+Ifytau = 1 / (0.00332*exp(-V/16.54103)+23.71839*exp(V/16.54103))
+IfNa = gIf * (Ify)*((0.2677)*(V-ENa))
+IfK = gIf * (Ify)*((1-0.2677)*(V-EK)) 
+If = IfK + IfNa
+
+# Ca buffers
+betass = ( 1 + SLlow*KdSLlow/(Cass + KdSLlow)**2 + SLhigh*KdSLhigh/(Cass + KdSLhigh)**2 + BCa*KdBCa/(Cass + KdBCa)**2  )**(-1)
+betai1 = ( 1 + BCa*KdBCa/(Cai1 + KdBCa)**2  )**(-1)
+betai2 = ( 1 + BCa*KdBCa/(Cai2 + KdBCa)**2  )**(-1)
+betai3 = ( 1 + BCa*KdBCa/(Cai3 + KdBCa)**2  )**(-1)
+betai4 = ( 1 + BCa*KdBCa/(Cai4 + KdBCa)**2  )**(-1)
+gammai1 = BCa*KdBCa/(Cai1 + KdBCa)**2
+gammai2 = BCa*KdBCa/(Cai2 + KdBCa)**2
+gammai3 = BCa*KdBCa/(Cai3 + KdBCa)**2
+gammai4 = BCa*KdBCa/(Cai4 + KdBCa)**2
+
+betaSR1 = ( 1 + CSQN*KdCSQN/(CaSR1 + KdCSQN)**2 )**(-1) 
+betaSR2 = ( 1 + CSQN*KdCSQN/(CaSR2 + KdCSQN)**2 )**(-1) 
+betaSR3 = ( 1 + CSQN*KdCSQN/(CaSR3 + KdCSQN)**2 )**(-1) 
+betaSR4 = ( 1 + CSQN*KdCSQN/(CaSR4 + KdCSQN)**2 )**(-1) 
+
+betaNass = ( 1 + BNa*KdBNa/((Nass) + KdBNa)**2 )**(-1)
+
+#  Diffusion from junct to non-junct
+Jj_nj = DCa * Aj_nj / xj_nj * (Cass-Cai4)*1e-6
+
+# SERCA fluxes 
+J_SERCASR1 = (-k3*CaSR1**2*(cpumps-SERCACa1)+k4*SERCACa1)*Vnonjunct1*2 # in 1 nl volume
+J_bulkSERCA1 = (k1*Cai1**2*(cpumps-SERCACa1)-k2*SERCACa1)*Vnonjunct1*2 # in 1 nl volume
+
+J_SERCASR2 = (-k3*CaSR2**2*(cpumps-SERCACa2)+k4*SERCACa2)*Vnonjunct2*2 # in 1 nl volume
+J_bulkSERCA2 = (k1*Cai2**2*(cpumps-SERCACa2)-k2*SERCACa2)*Vnonjunct2*2 # in 1 nl volume
+
+J_SERCASR3 = (-k3*CaSR3**2*(cpumps-SERCACa3)+k4*SERCACa3)*Vnonjunct3*2 # in 1 nl volume
+J_bulkSERCA3 = (k1*Cai3**2*(cpumps-SERCACa3)-k2*SERCACa3)*Vnonjunct3*2 # in 1 nl volume
+
+J_SERCASRss = (-k3*CaSR4**2*(cpumps-SERCACass)+k4*SERCACass)*Vss*2 # in 1 nl volume
+J_bulkSERCAss = (k1*Cass**2*(cpumps-SERCACass)-k2*SERCACass)*Vss*2 # in 1 nl volume
+
+# RyR
+RyRtauadapt = 1
+
+RyRtauactss = 5e-3
+RyRtauinactss = 15e-3
+
+nuss = 625*Vss / Dvcell
+RyRSRCass = (1 - 1/(1 +  exp((CaSR4-0.3/cAF_RyR)/0.1)))
+RyRainfss = 0.505-0.427/(1 + exp((Cass*1000-0.29)/0.082))
+RyRoinfss = (1 - 1/(1 +  exp((Cass*1000-((RyRass) + 0.22/cAF_RyR))/0.03)))
+RyRcinfss = (1/(1 + exp((Cass*1000-((RyRass)+0.02))/0.01)))
+Jrelss = nuss * ( (RyRoss) ) * (RyRcss) * RyRSRCass * ( CaSR4 -  Cass ) 
+
+RyRtauact = 18.75e-3
+RyRtauinact = 87.5e-3
+
+nu1 = 1*Vnonjunct1 / Dvcell
+RyRSRCa1 = (1 - 1/(1 +  exp((CaSR1-0.3/cAF_RyR)/0.1)))
+RyRainf1 = 0.505-0.427/(1 + exp((Cai1*1000-0.29)/0.082))
+RyRoinf1 = (1 - 1/(1 +  exp(( Cai1*1000-(RyRa1 + 0.22/cAF_RyR))/0.03)))
+RyRcinf1 = (1/(1 +  exp(( Cai1*1000-(RyRa1+0.02))/0.01)))
+Jrel1 = nu1 * ( RyRo1 ) * RyRc1 * RyRSRCa1 * ( CaSR1 -  Cai1 ) 
+
+nu2 = 1*Vnonjunct2 / Dvcell
+RyRSRCa2 = (1 - 1/(1 +  exp((CaSR2-0.3/cAF_RyR)/0.1)))
+RyRainf2 =  0.505-0.427/(1 + exp((Cai2*1000-0.29)/0.082))
+RyRoinf2 = (1 - 1/(1 +  exp(( Cai2*1000-((RyRa2) + 0.22/cAF_RyR))/0.03)))
+RyRcinf2 = (1/(1 +  exp(( Cai2*1000-((RyRa2)+0.02))/0.01)))
+Jrel2 = nu2 * ( RyRo2 ) * RyRc2 * RyRSRCa2 * ( CaSR2 -  Cai2) 
+
+nu3 = 1*Vnonjunct3 / Dvcell
+RyRSRCa3 = (1 - 1/(1 +  exp((CaSR3-0.3/cAF_RyR)/0.1)))
+RyRainf3 =  0.505-0.427/(1 + exp((Cai3*1000-0.29)/0.082))
+RyRoinf3 = (1 - 1/(1 +  exp(( Cai3*1000-((RyRa3) + 0.22/cAF_RyR))/0.03)))
+RyRcinf3 = (1/(1 +  exp(( Cai3*1000-((RyRa3)+0.02))/0.01)))
+Jrel3 = nu3 * ( RyRo3 ) * RyRc3 * RyRSRCa3 * ( CaSR3 -  Cai3 ) 
+
+# SR leak fluxes
+JSRCaleak1 = kSRleak * ( CaSR1 - Cai1 ) * Vnonjunct1 / Dvcell
+JSRCaleak2 = kSRleak * ( CaSR2 - Cai2 ) * Vnonjunct2 / Dvcell
+JSRCaleak3 = kSRleak * ( CaSR3 - Cai3 ) * Vnonjunct3 / Dvcell
+JSRCaleakss = kSRleak * ( CaSR4 - Cass ) * Vss / Dvcell
+
+# Cafluxes in 1 nl volume
+
+JCa1 = -J_bulkSERCA1 + JSRCaleak1 + Jrel1
+JCa2 = -J_bulkSERCA2 + JSRCaleak2 + Jrel2
+JCa3 = -J_bulkSERCA3 + JSRCaleak3 + Jrel3
+JCa4 = Jj_nj
+JCass = -Jj_nj + JSRCaleakss - J_bulkSERCAss + Jrelss
+
+JSRCa1 = J_SERCASR1 - JSRCaleak1 - Jrel1
+JSRCa2 = J_SERCASR2 - JSRCaleak2 - Jrel2
+JSRCa3 = J_SERCASR3 - JSRCaleak3 - Jrel3
+JSRCa4 = J_SERCASRss - JSRCaleakss - Jrelss
+
+# Naflux in 1 nl volume
+JNa = DNa * Aj_nj / xj_nj_Nai * (Nass - Nai)* 1e-6
+
+#monitor(INa, ICaL, It, Isus, IKr, IKs, IK1, INab, ICab, ICaP, INaK, INaCa, If, Jrelss, Jrel1, Jrel2, Jrel3, J_bulkSERCA1, J_bulkSERCA2, J_bulkSERCA3, J_bulkSERCAss, JSRCaleak1, JSRCaleak2, JSRCaleak3, JSRCaleakss)
+
+#monitor(ist, INa, ICaL, It, Isus, IKr, IKs, IK1, INab, ICab, ICaP, INaK, INaCa, If, Jrelss, Jrel1, Jrel2, Jrel3, J_bulkSERCA1, J_bulkSERCA2, J_bulkSERCA3, J_bulkSERCAss, JSRCaleak1, JSRCaleak2, JSRCaleak3, JSRCaleakss)
+
+#**********************************************
+# Differential equations
+#**********************************************
+
+# V
+dV_dt = 1e-3*(INa + ICaL + It + Isus + IK1 + IKr + IKs + INab + ICab + INaK + ICaP + INaCa + If + ist)/(-Cm) # currents are in (pA)
+
+# INa
+dINam_dt = 1e-3*(INaminf - INam)/INamtau
+dINah1_dt = 1e-3*(INahinf - INah1)/INah1tau    
+dINah2_dt = 1e-3*(INahinf - INah2)/INah2tau    
+
+# ICaL
+dICaLd_dt = 1e-3*(ICaLdinf - ICaLd)/ICaLdtau
+dICaLf1_dt = 1e-3*(ICaLfinf - ICaLf1)/ICaLf1tau
+dICaLf2_dt = 1e-3*(ICaLfinf - ICaLf2)/ICaLf2tau
+dICaLfca_dt = 1e-3*(ICaLfcainf - ICaLfca)/ICaLfcatau
+
+# It
+dItr_dt = 1e-3*(Itrinf - Itr)/Itrtau
+dIts_dt = 1e-3*(Itsinf - Its)/Itstau
+
+# Isus
+dIsusr_dt = 1e-3*(Isusrinf - Isusr)/Isusrtau
+dIsuss_dt = 1e-3*(Isussinf - Isuss)/Isusstau
+
+# IKs
+dIKsn_dt = 1e-3*(IKsninf - IKsn)/IKsntau
+
+# IKr
+dIKrpa_dt = 1e-3*(IKrpainf - IKrpa)/IKrpatau
+
+# If
+dIfy_dt = 1e-3*(Ifyinf - Ify)/Ifytau
+
+
+# RyR
+dRyRoss_dt = 1e-3*(RyRoinfss-RyRoss)/RyRtauactss
+dRyRcss_dt = 1e-3*(RyRcinfss-RyRcss)/RyRtauinactss
+dRyRass_dt = 1e-3*(RyRainfss-RyRass)/RyRtauadapt
+dRyRo1_dt = 1e-3*(RyRoinf1-RyRo1)/RyRtauact
+dRyRc1_dt = 1e-3*(RyRcinf1-RyRc1)/RyRtauinact
+dRyRa1_dt = 1e-3*(RyRainf1-RyRa1)/RyRtauadapt
+dRyRo2_dt = 1e-3*(RyRoinf2-RyRo2)/RyRtauact
+dRyRc2_dt = 1e-3*(RyRcinf2-RyRc2)/RyRtauinact
+dRyRa2_dt = 1e-3*(RyRainf2-RyRa2)/RyRtauadapt
+dRyRo3_dt = 1e-3*(RyRoinf3-RyRo3)/RyRtauact
+dRyRc3_dt = 1e-3*(RyRcinf3-RyRc3)/RyRtauinact
+dRyRa3_dt = 1e-3*(RyRainf3-RyRa3)/RyRtauadapt
+
+# SERCACa
+dSERCACa1_dt = 1e-3*0.5*(-J_SERCASR1 + J_bulkSERCA1)/Vnonjunct1 
+dSERCACa2_dt = 1e-3*0.5*(-J_SERCASR2 + J_bulkSERCA2)/Vnonjunct2 
+dSERCACa3_dt = 1e-3*0.5*(-J_SERCASR3 + J_bulkSERCA3)/Vnonjunct3 
+dSERCACass_dt = 1e-3*0.5*(-J_SERCASRss + J_bulkSERCAss)/Vss 
+
+# Nai & Ki
+dNass_dt = 1e-3*betaNass * (-JNa/Vss -(INa + INab + 3*INaK + 3*INaCa + IfNa) / (Vss*F))
+dNai_dt = 1e-3*JNa/Vnonjunct_Nai
+dKi_dt = -1e-3*(It + Isus + IK1 + IKr + IKs - 2*INaK + IfK + ist) / (Vcytosol*F)
+
+# Ca
+dCass_dt = 1e-3*betass * ( JCass/Vss + (-ICaL - ICab - ICaP + 2*INaCa) / (2*Vss*F) )
+
+dCai1_dt = 1e-3*(betai1 * (DCa + gammai1*DCaBm) * ( (Cai2-2*Cai1+Cai1)/dx**2 + (Cai2-Cai1)/(2*dx**2) ) - 2*betai1*gammai1*DCaBm/(KdBCa + Cai1) * ((Cai2-Cai1)/(2*dx))**2 + JCa1/Vnonjunct1*betai1) 
+
+dCai2_dt =1e-3*( betai2 * (DCa + gammai2*DCaBm) * ( (Cai3-2*Cai2+Cai1)/dx**2 + (Cai3-Cai1)/(2*2*dx**2) ) - 2*betai2*gammai2*DCaBm/(KdBCa + Cai2) * ((Cai3-Cai1)/(2*dx))**2 + JCa2/Vnonjunct2*betai2) 
+
+dCai3_dt = 1e-3*(betai3 * (DCa + gammai3*DCaBm) * ( (Cai4-2*Cai3+Cai2)/dx**2 + (Cai4-Cai2)/(2*3*dx**2) ) - 2*betai3*gammai3*DCaBm/(KdBCa + Cai3) * ((Cai4-Cai2)/(2*dx))**2 + JCa3/Vnonjunct3*betai3) 
+
+dCai4_dt = 1e-3*(betai4 * (DCa + gammai4*DCaBm) * ( (Cai4-2*Cai4+Cai3)/dx**2 + (Cai4-Cai3)/(2*4*dx**2) ) - 2*betai4*gammai4*DCaBm/(KdBCa + Cai4) * ((Cai4-Cai3)/(2*dx))**2 + JCa4/Vnonjunct4*betai4) 
+
+dCaSR1_dt = 1e-3*(betaSR1 * (DCaSR) * ( (CaSR2-2*CaSR1+CaSR1)/dx**2 + (CaSR2-CaSR1)/(2*1*dx**2) ) + JSRCa1/VSR1*betaSR1) 
+
+dCaSR2_dt= 1e-3*(betaSR2 * (DCaSR) * ( (CaSR3-2*CaSR2+CaSR1)/dx**2 + (CaSR3-CaSR1)/(2*2*dx**2) ) + JSRCa2/VSR2*betaSR2) 
+
+dCaSR3_dt= 1e-3*(betaSR3 * (DCaSR) * ( (CaSR4-2*CaSR3+CaSR2)/dx**2 + (CaSR4-CaSR2)/(2*3*dx**2) ) + JSRCa3/VSR3*betaSR3) 
+
+dCaSR4_dt = 1e-3*(betaSR4 * (DCaSR) * ( (CaSR4-2*CaSR4+CaSR3)/dx**2 + (CaSR4-CaSR3)/(2*4*dx**2) ) + JSRCa4/VSR4*betaSR4) 
+

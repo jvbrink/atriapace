@@ -40,8 +40,10 @@ def find_steadycycle(ode, BCL, dt, num_of_beats=50, odepath="../ode/",
     # Compile the ODE solver module
     if isinstance(ode, str):
         module, forward = create_module(ode, path=odepath)
-    else:
+    elif isinstance(ode, list):
         module, forward, ode = ode
+    else:
+        module, forward = create_module(ode)
 
     # Fetch model parameter list and init states
     model_params = module.init_parameter_values()
@@ -72,8 +74,10 @@ def find_steadycycles(ode, BCL_range, dt, num_of_beats=50, odepath="../ode/",
     # Compile the ODE solver module
     if isinstance(ode, str):
         module, forward = create_module(ode, path=odepath)
-    else:
+    elif isinstance(ode, list):
         module, forward, ode = ode
+    else:
+        module, forward = create_module(ode)
 
     # Fetch model parameter list and init states
     model_params = module.init_parameter_values()
