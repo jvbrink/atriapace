@@ -3,7 +3,7 @@ from setup0D import create_module, find_steadycycle
 import numpy as np
 import matplotlib.pyplot as plt
 
-def pacing_dynamic(ode, BCL_range, dt, threshold=0.1, offset=10, plot=False,
+def pacing_dynamic(ode, BCL_range, dt, threshold=0.1, plot=False,
                    odepath='../ode/', scpath="../data/steadycycles/"):
     """
     Calculate a restitution curve using dynamic pacing.
@@ -25,9 +25,6 @@ def pacing_dynamic(ode, BCL_range, dt, threshold=0.1, offset=10, plot=False,
     index = {}
     index['V'] = module.state_indices('V')
     index['BCL'] = module.parameter_indices('stim_period')
-    index['offset'] = module.parameter_indices('stim_offset')
-
-    model_params[index['offset']] = offset
 
     # For storing the results
     results = np.zeros((3, len(BCL_range)))
@@ -46,7 +43,7 @@ def pacing_dynamic(ode, BCL_range, dt, threshold=0.1, offset=10, plot=False,
             print "Steady cycle found, proceeding to do dynamic pacing."
 
         # Measure when potential crosses threshold
-        t = 0; tstop = BCL+offset
+        t = 0; tstop = BCL
         V = [states[index['V']]]
 
         # First beat
@@ -57,7 +54,9 @@ def pacing_dynamic(ode, BCL_range, dt, threshold=0.1, offset=10, plot=False,
 
         # Extract times from results
         V = np.array(V)
-        APD = len(V[V>threshold])*dt
+        vmin = min(V); vmax = max(V)
+        Vthresh = (max(V)-min(V))*threshold + min(V)
+        APD = len(V[V > Vthresh])*dt
         DI = BCL - APD
 
         print "BCL: %g,  APD: %g,   DI: %g" % (BCL, APD, DI)
@@ -68,11 +67,11 @@ def pacing_dynamic(ode, BCL_range, dt, threshold=0.1, offset=10, plot=False,
             plt.plot(tarray, V, linewidth=1.5)
 
             # Find intersections and plot them
-            above = tarray[V>threshold]
+            above = tarray[V > Vthresh]
             lt, ht = above[0], above[-1]
 
-            plt.plot([lt, ht], [threshold, threshold], 'o-', linewidth=1.5)
-            plt.axis([0, BCL+offset, -0.05, 1.05])
+            plt.plot([lt, ht], [Vthresh, Vthresh], 'o-', linewidth=1.5)
+            plt.axis([0, BCL, vmin*1.05, vmax*1.05])
             plt.grid()
             plt.xlabel('Time [ms]')
             plt.ylabel('V [rel.]')
@@ -81,11 +80,11 @@ def pacing_dynamic(ode, BCL_range, dt, threshold=0.1, offset=10, plot=False,
 if __name__ == '__main__':
     ### Example of use
     ode = 'FK_cAF'
-    ode = 'hAM_KSMT_nSR'
     ode = 'hAM_KSMT_cAF'
     ode = 'FK_nSR'
+    ode = 'hAM_KSMT_nSR'
 
     BCL_range = range(1000, 295, -5)
     dt = 0.01
 
-    pacing_dynamic(ode, BCL_range, dt)
+    pacing_dynamic(ode, BCL_range, dt, plot=True)

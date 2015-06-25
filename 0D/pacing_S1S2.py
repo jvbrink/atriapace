@@ -3,7 +3,7 @@ from setup0D import create_module, find_steadycycle
 import numpy as np
 import matplotlib.pyplot as plt
 
-def pacing_S1S2(ode, S1, S2_range, dt, threshold=0.1, plot=False,
+def pacing_S1S2(ode, S1, S2_range, dt, threshold=0.1, offset=10, plot=False,
                 odepath='../ode/', scpath="../data/steadycycles/"):
     """
     Calculate a restitution curve using S1-S2 pacing.
@@ -37,6 +37,7 @@ def pacing_S1S2(ode, S1, S2_range, dt, threshold=0.1, plot=False,
         states = init_states.copy()
         model_params[index['BCL']] = S2
 
+        t = 0
         while t <= S2:
             forward(states, t, dt, model_params)
             t += dt
@@ -47,11 +48,47 @@ def pacing_S1S2(ode, S1, S2_range, dt, threshold=0.1, plot=False,
             t += dt
             V.append(states[index['V']])
 
-        # Extract APD
+        # Extract times from results
         V = np.array(V)
-        APD = len(V[V>threshold])*dt
+        vmin = min(V); vmax = max(V)
+        Vthresh = (max(V)-min(V))*threshold + min(V)
+        APD = len(V[V > Vthresh])*dt
         DI = S2 - APD
+        
+        if plot:
+            # Plot action potential
+            tarray = np.linspace(0, S2, len(V))
+            plt.plot(tarray, V, linewidth=1.5)
+
+            # Find intersections and plot them
+            above = tarray[V > Vthresh]
+            lt, ht = above[0], above[-1]
+
+            plt.plot([lt, ht], [Vthresh, Vthresh], 'o-', linewidth=1.5)
+            plt.axis([0, S2+offset, vmin*1.05, vmax*1.05])
+            plt.grid()
+            plt.xlabel('Time [ms]')
+            plt.ylabel('V [rel.]')
+            plt.show()
+
         return APD, DI
+
+        if plot:
+            # Plot action potential
+            tarray = np.linspace(0, BCL, len(V))
+            plt.plot(tarray, V, linewidth=1.5)
+
+            # Find intersections and plot them
+            above = tarray[V > Vthresh]
+            lt, ht = above[0], above[-1]
+
+            plt.plot([lt, ht], [Vthresh, Vthresh], 'o-', linewidth=1.5)
+            plt.axis([0, BCL+offset, vmin*1.05, vmax*1.05])
+            plt.grid()
+            plt.xlabel('Time [ms]')
+            plt.ylabel('V [rel.]')
+            plt.show()
+
 
     for S2 in S2_range:
         APD, DI = pulse(S2)
@@ -59,15 +96,13 @@ def pacing_S1S2(ode, S1, S2_range, dt, threshold=0.1, plot=False,
 
 if __name__ == '__main__':
     ### Example of use
-
     ode = 'hAM_KSMT_nSR'
     ode = 'hAM_KSMT_cAF'
     ode = 'FK_nSR'
     ode = 'FK_cAF'
 
-    BCL_range = range(600, 495, -5)
     dt = 0.01
     S1 = 1000
     S2_range = range(500, 295, -5)
 
-    pacing_S1S2(ode, S1, S2_range, dt)
+    pacing_S1S2(ode, S1, S2_range, dt, plot=True)
