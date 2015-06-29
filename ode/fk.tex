@@ -1,0 +1,191 @@
+\documentclass[a4paper, 11pt, notitlepage, english]{article}
+
+\usepackage{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc, url}
+\usepackage{textcomp}
+\usepackage{amsmath, amssymb}
+\usepackage{amsbsy, amsfonts}
+\usepackage{graphicx, color, xcolor}
+\usepackage{verbatim, listings, fancyvrb}
+\usepackage{parskip}
+\usepackage{framed}
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{url}
+\usepackage{flafter}
+\usepackage{simplewick}
+\usepackage{amsthm}
+\usepackage{bbold}
+
+
+\usepackage{caption}
+\DeclareCaptionLabelSeparator{colon}{. }
+\renewcommand{\captionfont}{\small\sffamily}
+\renewcommand{\captionlabelfont}{\bf\sffamily}
+\usepackage{float}
+%\floatstyle{ruled}
+%\restylefloat{figure}
+\setlength{\captionmargin}{20pt}
+%\addto\captionsenglish{\renewcommand{\figurename}{Fig.}}
+\usepackage{bigstrut}
+\setlength{\tabcolsep}{12pt}
+
+
+\newtheorem{theorem}[]{Wick's Theorem}[]
+
+\DeclareUnicodeCharacter{00A0}{~}
+
+\definecolor{javared}{rgb}{0.6,0,0} % for strings
+\definecolor{javagreen}{rgb}{0.25,0.5,0.35} % comments
+\definecolor{javapurple}{rgb}{0.5,0,0.35} % keywords
+\definecolor{javadocblue}{rgb}{0.25,0.35,0.75} % javadoc
+
+\lstset{language=python,
+basicstyle=\ttfamily\scriptsize,
+keywordstyle=\color{javapurple},%\bfseries,
+stringstyle=\color{javared},
+commentstyle=\color{javagreen},
+morecomment=[s][\color{javadocblue}]{/**}{*/},
+morekeywords={super, with},
+% numbers=left,
+% numberstyle=\tiny\color{black},
+stepnumber=2,
+numbersep=10pt,
+tabsize=2,
+showspaces=false,
+captionpos=b,
+showstringspaces=false,
+frame= single,
+breaklines=true}
+
+\usepackage{geometry}
+\geometry{headheight=0.01mm}
+\geometry{top=20mm, bottom=20mm, left=34mm, right=34mm}
+
+\renewcommand{\arraystretch}{2}
+\setlength{\tabcolsep}{10pt}
+\makeatletter
+\renewcommand*\env@matrix[1][*\c@MaxMatrixCols c]{%
+  \hskip -\arraycolsep
+  \let\@ifnextchar\new@ifnextchar
+  \array{#1}}
+%
+% Definering av egne kommandoer og miljøer
+%
+\newcommand{\dd}[1]{\ \text{d}#1}
+\newcommand{\f}[2]{\frac{#1}{#2}} 
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+\newcommand{\bra}[1]{\langle #1|}
+\newcommand{\ket}[1]{|#1 \rangle}
+\newcommand{\braket}[2]{\langle #1 | #2 \rangle}
+\newcommand{\brakket}[2]{\langle #1 || #2 \rangle}
+\newcommand{\braup}[1]{\langle #1 \left|\uparrow\rangle\right.}
+\newcommand{\bradown}[1]{\langle #1 \left|\downarrow\rangle\right.}
+\newcommand{\av}[1]{\left| #1 \right|}
+\newcommand{\op}[1]{\hat{#1}}
+\newcommand{\braopket}[3]{\langle #1 | {#2} | #3 \rangle}
+\newcommand{\ketbra}[2]{\ket{#1}\bra{#2}}
+\newcommand{\pp}[1]{\frac{\partial}{\partial #1}}
+\newcommand{\ppn}[1]{\frac{\partial^2}{\partial #1^2}}
+\newcommand{\up}{\left|\uparrow\rangle\right.}
+\newcommand{\upup}{\left|\uparrow\uparrow\rangle\right.}
+\newcommand{\down}{\left|\downarrow\rangle\right.}
+\newcommand{\downdown}{\left|\downarrow\downarrow\rangle\right.}
+\newcommand{\updown}{\left|\uparrow\downarrow\rangle\right.}
+\newcommand{\downup}{\left|\downarrow\uparrow\rangle\right.}
+\newcommand{\bupup}{\left.\langle\uparrow\uparrow\right|}
+\newcommand{\bdowndown}{\left.\langle\downarrow\downarrow\right|}
+\newcommand{\bupdown}{\left.\langle\uparrow\downarrow\right|}
+\newcommand{\bdownup}{\left.\langle\downarrow\uparrow\right|}
+\renewcommand{\d}{{\rm d}}
+\newcommand{\Res}[2]{{\rm Res}(#1;#2)}
+\newcommand{\To}{\quad\Rightarrow\quad}
+\newcommand{\eps}{\epsilon}
+\newcommand{\inner}[2]{\langle #1 , #2 \rangle}
+\renewcommand{\u}{\uparrow}
+% \renewcommand{\d}{\downarrow}
+\newcommand{\dddd}{\d\d\d\d}
+\newcommand{\uddd}{\u\d\d\d}
+\newcommand{\dudd}{\d\u\d\d}
+\newcommand{\ddud}{\d\d\u\d}
+\newcommand{\dddu}{\d\d\d\u}
+\newcommand{\uudd}{\u\u\d\d}
+\newcommand{\udud}{\u\d\u\d}
+\newcommand{\uddu}{\u\d\d\u}
+\newcommand{\duud}{\d\u\u\d}
+\newcommand{\dudu}{\d\u\d\u}
+\newcommand{\dduu}{\d\d\u\u}
+\newcommand{\uuud}{\u\u\u\d}
+\newcommand{\uudu}{\u\u\d\u}
+\newcommand{\uduu}{\u\d\u\u}
+\newcommand{\duuu}{\d\u\u\u}
+\newcommand{\uuuu}{\u\u\u\u}
+\newcommand{\m}{\text{-}}
+\newcommand{\ui}{{\u_1}}
+\newcommand{\uii}{{\u_2}}
+\newcommand{\uiii}{{\u_3}}
+\newcommand{\di}{{\d_1}}
+\newcommand{\dii}{{\d_2}}
+\newcommand{\diii}{{\d_3}}
+
+\newenvironment{psmallmatrix}
+  {\left(\begin{smallmatrix}}
+  {\end{smallmatrix}\right)}
+
+\newenvironment{bsmallmatrix}
+  {\left[\begin{smallmatrix}}
+  {\end{smallmatrix}\right]}
+
+
+
+\newcommand{\bt}[1]{\boldsymbol{#1}}
+\newcommand{\mat}[1]{\textsf{\textbf{#1}}}
+\newcommand{\I}{\boldsymbol{\mathcal{I}}}
+\newcommand{\p}{\partial}
+
+\title{The 4-variable Fenton Karma Model (FK4V)}
+
+\begin{document}
+
+\maketitle
+
+The 4-variable Fenton Karma is a phenomenological model consisting of 4 states, these are:
+\begin{itemize}
+    \item The membrane potentital, $V$
+    \item The gating variables, $v$, $w$ and $d$
+\end{itemize}
+
+And the membrane potentital is driven by three currents
+$$I_{\rm fi}, \qquad I_{\rm si}, \qquad I_{\rm so}.$$
+Where the subindex denotes the \emph{fast inward}, \emph{slow inward} and \emph{slow outward} currents. 
+
+The fast inward current is responsible for the depolarization of the membrane and only depends on the gating variable, $v$, which is a inactivation-reactivation gate. This gating variable is responsible for inactivation of the fast inward current when the cell depolarizes - and of the reactivation of the $I_{\rm fi}$ when the cell repolarizes. 
+
+The slow outward current is responsible for the repolarization of the membrane, it is mainly drivven by a time-independant potassium current.
+
+Finally, the slow inward current mainly consists of calcium current, and mainly balances $I_{\rm so}$, causing the plateau of the action potential. It depends on the gating variable $w$, which is responsible for its inactivation and reactivation.
+
+It is important to emphasize that while these three currents correspond to physical currents, the model is mainly phenomenological, and so any interpretion should be seen as mainly illustrative---the $I_{\rm fi}$ is \emph{not} really a sodium current.
+
+\section*{Equations}
+
+We specify the membrane potential in a dimensionless (scaled) form, so that 
+$$u \equiv \frac{V-V_0}{V_{\rm fi}-V_0}.$$
+Where $V_0$ is the resting membrane potential and $V_{\rm fi}$ is the Nernst-potential of the fast-inward current, which will correspond to the peak of the membrane potential. With this definition, we have that the membrane potential varies as $u \in [0,1]$.
+
+The membrane potential is driven by these three currents, as well as an applied stimulus current, so we have
+$$\frac{\d u }{\d t} = -I_{\rm fi} - I_{\rm so} - I_{\rm si}.$$
+
+\section*{Expressions for the currents}
+
+The fast inward current is given by
+$$J_{\rm fi} = -\frac{v}{\tau_d}H(u-u_c)(1-u)(u-u_c).$$
+
+
+
+
+
+
+\end{document}
