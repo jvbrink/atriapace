@@ -146,42 +146,104 @@ breaklines=true}
 \newcommand{\p}{\partial}
 
 \title{The 4-variable Fenton Karma Model (FK4V)}
+\author{Jonas van den Brink \\ \texttt{j.v.brink@fys.uio.no}}
 
 \begin{document}
 
 \maketitle
 
-The 4-variable Fenton Karma is a phenomenological model consisting of 4 states, these are:
+The Fenton-Karma model is a phenomenological model developed in 1998. The original model consisted of only 3 variables, and is thus known as the 3V-model. The model can be parameterized to reproduce experimental data or results from other computational cell models. The original paper gave 4 parameter sets, reproducing properties of: Beeler-Reuter, modified Beeler-Reuter, modified Luo Rudy 1 and experimental data from guinea pig.
+
+In 2004 Cherry and Fenton expanded the model by including one morde variable, leading to the four-variable counterpart of the Fenton-Karma model, sometimes abbrevated (FK4V) or just 4V. It preserves some properties of cardiac tissue from more complex models, such as: rate of rise of AP, time scaled of de- and repolarization, action potential durations (APD), conduction velocity (CV) in tissue---as well as action potential shape.
+
+\subsection*{States}
+The 4V Fenton-Karma consists of four states:
 \begin{itemize}
     \item The membrane potentital, $V$
     \item The gating variables, $v$, $w$ and $d$
 \end{itemize}
 
-And the membrane potentital is driven by three currents
-$$I_{\rm fi}, \qquad I_{\rm si}, \qquad I_{\rm so}.$$
-Where the subindex denotes the \emph{fast inward}, \emph{slow inward} and \emph{slow outward} currents. 
+\subsection*{Currents}
+The model includes three currents, these are:
+\begin{itemize}
+    \item The fast inward current, $I_{\rm fi}$
+    \item The slow inward current, $I_{\rm si}$
+    \item The slow outward current, $I_{\rm so}$
+\end{itemize}
 
-The fast inward current is responsible for the depolarization of the membrane and only depends on the gating variable, $v$, which is a inactivation-reactivation gate. This gating variable is responsible for inactivation of the fast inward current when the cell depolarizes - and of the reactivation of the $I_{\rm fi}$ when the cell repolarizes. 
+The fast inward current is responsible for the depolarization of the membrane during the action potential, and is dependant on the transmembrane potential and on the gating variable $v$. The gating variable can be seen as a inactionvation-reactivation gate, which is responsible for inactiovation of the fast inward current when the cell depolarizes---and reactivation when the cell repolarizes.
 
-The slow outward current is responsible for the repolarization of the membrane, it is mainly drivven by a time-independant potassium current.
+The slow inward current mainly consists of calcium current, and mainly balances the slow outward current, causing the plateau of the action potential. It depends on both the gating variables $d$ and $w$, which are responsible for its inactivation and reactivation.
 
-Finally, the slow inward current mainly consists of calcium current, and mainly balances $I_{\rm so}$, causing the plateau of the action potential. It depends on the gating variable $w$, which is responsible for its inactivation and reactivation.
+Finally, the slow outward current, which is responsible for the repolarization of the membrane, is mainly driven by a time-independant potassium current. As it is time-indepedant, it does not depend on any of the three gating variables.
 
-It is important to emphasize that while these three currents correspond to physical currents, the model is mainly phenomenological, and so any interpretion should be seen as mainly illustrative---the $I_{\rm fi}$ is \emph{not} really a sodium current.
+It is important to emphasize that the Fenton-Karma model is phenomenological, meaning these three currents do not directly correspond to physical currents. While it is true that the $I_{\rm fi}$ mainly comes from the real sodium current, it should be seen as mainly an illustrative connection, not a direct link between the two.
 
 \section*{Equations}
 
-We specify the membrane potential in a dimensionless (scaled) form, so that 
-$$u \equiv \frac{V-V_0}{V_{\rm fi}-V_0}.$$
-Where $V_0$ is the resting membrane potential and $V_{\rm fi}$ is the Nernst-potential of the fast-inward current, which will correspond to the peak of the membrane potential. With this definition, we have that the membrane potential varies as $u \in [0,1]$.
-
-The membrane potential is driven by these three currents, as well as an applied stimulus current, so we have
-$$\frac{\d u }{\d t} = -I_{\rm fi} - I_{\rm so} - I_{\rm si}.$$
-
-\section*{Expressions for the currents}
-
 The fast inward current is given by
-$$J_{\rm fi} = -\frac{v}{\tau_d}H(u-u_c)(1-u)(u-u_c).$$
+$$I_{\rm fi} = -\frac{v}{\tau_d}H(V-V_{\rm Na})(V-V_{\rm Na})(V_m - V),$$
+where $H$ denotes the \emph{Heaviside} function, also known as the unit step function, it is given by
+$$H(x) = \begin{cases}
+    1 & \mbox{for } x > 0, \\
+    0 & \mbox{for } x < 0.
+\end{cases}.$$
+So we immediately see that $I_{\rm fi} = 0$ when $V \leq V_{\rm Na}$. The $V_{\rm Na}$ parameter can thus be considered the threshold potential for the fast inward current. $V_m$ is simply the maximum membrane potential, and is therefore usually set to 1. Finally, the time constant $\tau_d$ is simply the rate constant for the fast inward current, and so it will regulate the rate of rise for the action potential as well as the conduction velocity in tissue.
+
+The slow outward current is given by
+$$I_{\rm so} = \frac{V-V_0}{\tau_o}H(V_C-V) + \frac{1}{\tau_{so}}H(V-V_c).$$
+Note that there is no dependance on any of the gating variables, however, there is a depdendance on the membrane potential. The Heaviside functions makes the current behave differently for $V > V_c$ and $V < V_c$. Also note that $V_o$ is the resting membrane potential, which for a normalized APD is set to 0. Note also that the time parameter $\tau_{\rm so}$, unlike the other time constants, is not actually constant, but changes as a sigmoidal shape:
+$$\tau_{\rm so} = \tau_{\rm so}^a + (\tau_{\rm so}^b - \tau_{\rm so}^a)\frac{1}{2}\bigg[1 + \tanh\big(k_{\tau_{\rm so}}}(V-V_{\rm so})\big)\bigg]
+
+Finally we have the slow inward current, which is given by
+$$I_{\rm si} = -\frac{wd}{\tau_{si}}.$$
+We see that the slow inward current depends on both gating variables $w$ and $d$.
+
+\subsubsection*{Gating expressions}
+
+As $v, w$ and $d$ are gating variables, we know they can be written on the form
+$$\frac{dx}{dt} = \alpha (1-x) - \beta x.$$
+Where $\alpha$ is the activation rate, and $\beta$ the inactivation rate---these two are usually not constants, but functions of $v$. In this model, the rates are step functions.
+
+For the gating variable for the fast inward current, $v$, the activation and inactivation rates are constants. However, Fenton and Karma found that to accurately reproduces CV restitution curves, they had to define the reactivation rate seperately on two different voltage ranges, so we have
+$$\alpha = \frac{1}{\tau_{v}^1H(V-V_v) - \tau_v^2 H(V_v - V)}.$$
+With this splitting, it is easier to control the minium diastolic interval and the steepness of the curve seperately, because they will be depedant on $\tau_{v}^1$ and $\tau_{v}^2$ respectively. This gives the ode
+$$\frac{\d v}{\d t} = \frac{H(V_{\rm Na}-V)}{\tau_{v}^1H(V-V_v) - \tau_v^2 H(V_v - V)}(1-v) - \frac{H(V-V_{\rm Na})}{\tau_{v_p}}v.$$
+
+The two rate constant for the $w$ gating variable are simply both step functions, so we have
+$$\frac{\d w}{\d t} = \frac{H(V_w - V)}{\tau_{w_m}}(1-w) - \frac{H(V-V_w)}{\tau_{w_p}}w.$$
+
+Finally, the rate constants for the variable $d$ is sigmoidal in shape, so we have
+$$\frac{\d d}{\d t} = \bigg(\frac{H(V_d - V)}{\tau_{s_m}} + \frac{H(V-V_d)}{\tau_{s_m}}\bigg)\bigg(\frac{1}{2}\big[1+\tanh\big(k_d(V-V_{\rm csi}\big)\big]-d\bigg).$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+% We specify the membrane potential in a dimensionless (scaled) form, so that 
+% $$u \equiv \frac{V-V_0}{V_{\rm fi}-V_0}.$$
+% Where $V_0$ is the resting membrane potential and $V_{\rm fi}$ is the Nernst-potential of the fast-inward current, which will correspond to the peak of the membrane potential. With this definition, we have that the membrane potential varies as $u \in [0,1]$.
+
+% The membrane potential is driven by these three currents, as well as an applied stimulus current, so we have
+% $$\frac{\d u }{\d t} = -I_{\rm fi} - I_{\rm so} - I_{\rm si}.$$
+
+% \section*{Expressions for the currents}
+
+% The fast inward current is given by
+% $$J_{\rm fi} = -\frac{v}{\tau_d}H(u-u_c)(1-u)(u-u_c).$$
 
 
 

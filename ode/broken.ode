@@ -1,16 +1,16 @@
 #**************************************************************************
-# A 4v Fenton-Karma model trying to reproduce the results of the Koivumaki
+# Parameters for a 4v Fenton-Karma model trying to reproduce the results of the Koivumaki
 # nSR model for a healthy human atrial myocyte.
 #**************************************************************************
 
 #**********************************************
-# States 
+# States
 #**********************************************
 
-states(V = 0) # Transmembrane potential
-states(v = 1) # gating variables
-states(w = 1) # gating variables
-states(d = 0) # gating variables
+states(V = 0)
+states(v = 1)
+states(w = 1)
+states(d = 0)
 
 #**********************************************
 # Parameters
@@ -47,36 +47,25 @@ parameters(tvmm = 1300.32077428) # controls the steepness of the CV curve (chaos
 parameters(stim_offset = 0,
            stim_period = 1000,
            stim_duration = 1,
-           stim_amplitude = -0.4)
+           stim_amplitude = -0.410*2)
 past = floor(time/stim_period)*stim_period
-ist = Conditional(And(Ge(time - past, stim_offset), Le(time - past, stim_offset + stim_duration), ),
-stim_amplitude, 0)
-
+Jstim = Conditional(And(Ge(time - past, stim_offset), Le(time - past, stim_offset + stim_duration), ), stim_amplitude, 0)
 
 #**********************************************
 # Analytical equations
 #**********************************************
 
 tso = tsoa + (tsob-tsoa)*(1+tanh((V-Vso)*xtso))/2.0
-xfi = -v*Conditional(Ge(V,Vna),1,0)*(V-Vna)*(Vm-V)/td
-xso = (V-Vo)*(1 - Conditional(Ge(V,Vc),1,0))/to + Conditional(Ge(V,Vc),1,0)/tso
-xsi = -w*d/tsi
+Jfi = -v*Conditional(Ge(V,Vna),1,0)*(V-Vna)*(Vm-V)/td
+Jso = (V-Vo)*(1 - Conditional(Ge(V,Vc),1,0))/to + Conditional(Ge(V,Vc),1,0)/tso
+Jsi = -w*d/tsi
 
+#**********************************************
+# Differential equations
+#**********************************************
 
-##**********************************************
-## Differential equations
-##**********************************************
-
-dV_dt = -(xfi + xso + xsi + ist)
+dV_dt = -(Jfi+Jso+Jsi+Jstim)
 dv_dt = (1 - Conditional(Ge(V,Vna),1,0))*(1 - v)/((1 - Conditional(Ge(V,Vv),1,0))*tvm + tvmm*Conditional(Ge(V,Vv),1,0)) - Conditional(Ge(V,Vna),1,0)*v/tvp
-
-dw_dt = (1 - Conditional(Ge(V,Vw),1,0))*(1-w)/twm - Conditional(Ge(V,Vw),1,0)*w/twp
-#dw_dt = (1 - Conditional(Ge(V,Vw),1,0))*(1-w)/twm - Conditional(Ge(V,Vw),1,0)*w/twp
-
-
-dd_dt = ((1 - Conditional(Ge(V,Vd),1,0))/tsm + Conditional(Ge(V,Vd),1,0)/tsp)*((1+tanh(xk*(V-Vcsi)))/2.0-d)
-#dd_dt = ((1 - Conditional(Ge(V,Vd),1,0))/tsm + Conditional(Ge(V,Vd),1,0)/tsp)*((1+tanh(xk*(V-Vcsi)))/2.0-d)
-
-
-
+dw_dt = (1-w)/twm*(1-Conditional(Ge(V,Vw),1,0))-w/twp*Conditional(Ge(V,Vw), 1, 0)
+dd_dt = (1/tsm*(1-Conditional(Ge(V,Vd), 1, 0))+1/tsp*Conditional(Ge(V,Vd), 1, 0))*((1+tanh(xk*(V-Vcsi)))/2-d)
 

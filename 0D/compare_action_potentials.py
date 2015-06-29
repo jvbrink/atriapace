@@ -45,9 +45,9 @@ def compare_ap(odes, BCL, dt, offset=10, savefig='', odepath='../ode/', scpath="
             t += dt
 
         # Rescale the results
-        V = np.array(V)
-        V -= min(V)
-        V /= np.max(V)
+        # V = np.array(V)
+        # V -= min(V)
+        # V /= np.max(V)
 
         # Plot the results
         t = np.linspace(0, tstop, len(V))
@@ -64,11 +64,11 @@ def compare_ap(odes, BCL, dt, offset=10, savefig='', odepath='../ode/', scpath="
     plt.close()
 
 if __name__ == '__main__':
-    odes_nSR = ['hAM_KSMT_nSR', 'FK_nSR']
+    odes_nSR = ['FK_nSR', 'broken']
     odes_cAF = ['hAM_KSMT_cAF', 'FK_cAF']
     BCL = 500
     dt = 0.01
 
     compare_ap(odes_nSR, BCL, dt)
-    compare_ap(odes_cAF, BCL, dt)
+#    compare_ap(odes_cAF, BCL, dt)
 
