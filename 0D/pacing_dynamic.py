@@ -79,12 +79,12 @@ def pacing_dynamic(ode, BCL_range, dt, threshold=0.1, plot=False,
 
 if __name__ == '__main__':
     ### Example of use
-    ode = 'FK_cAF'
-    ode = 'hAM_KSMT_cAF'
-    ode = 'FK_nSR'
+    # ode = 'FK_cAF'
+    # ode = 'hAM_KSMT_cAF'
+    # ode = 'FK_nSR'
     ode = 'hAM_KSMT_nSR'
 
     BCL_range = range(1000, 295, -5)
     dt = 0.01
 
-    pacing_dynamic(ode, BCL_range, dt, plot=True)
+    pacing_dynamic(ode, BCL_range, dt, plot=False)

@@ -2,7 +2,7 @@ from setup0D import create_module
 import numpy as np 
 import matplotlib.pyplot as plt 
 
-def effective_refractatory_period(ode, BCL_range, dt, erpstart=50, threshold=0.8,
+def effective_refractatory_period(ode, BCL_range, dt=0.01, erpstart=50, threshold=0.8,
                                   odepath='../ode/', scpath="../data/steadycycles/"):
     """
     Calculate the ERP for an ode model for a range of BCLs. The given model is
@@ -63,21 +63,15 @@ def effective_refractatory_period(ode, BCL_range, dt, erpstart=50, threshold=0.8
 
             if np.max(V) > threshold*Vpeak:
                 ERP = S2
-                print "S1: %f,  ERP: %f" % (BCL, ERP)
+                print "BCL: %f,  ERP: %f" % (BCL, ERP)
                 break
-            else:
-            	print "S2: %f, Vpeak: %f" % (S2, np.max(V)/Vpeak)
 
 if __name__ == '__main__':
-    ode = 'FK_cAF'
-    ode = 'hAM_KSMT_cAF'
-    ode = 'FK_nSR'
-    ode = 'hAM_KSMT_nSR'
-
     # BCL_range = xrange(300, 1005, 5)
     BCL_range = range(300, 1000, 5)
     dt = 0.01
 
-    start = 50
-
-    effective_refractatory_period(ode, BCL_range, dt, erpstart=250)
+    effective_refractatory_period('hAM_KSMT_nSR', BCL_range, dt, erpstart=180)
+    #effective_refractatory_period('hAM_KSMT_cAF', BCL_range, dt, erpstart=180)
+    #effective_refractatory_period('FK_nSR', BCL_range, dt, erpstart=50)
+    #effective_refractatory_period('FK_cAF', BCL_range, dt, erpstart=50)

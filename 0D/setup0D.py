@@ -31,7 +31,7 @@ def create_module(ode, solver="rush_larsen", monitored=[], path="../ode/"):
 
     return module, forward
 
-def find_steadycycle(ode, BCL, dt, num_of_beats=50, odepath="../ode/", 
+def find_steadycycle(ode, BCL, dt, pace_time=50000, odepath="../ode/", 
                      scpath="../data/steadycycles/"):
     """
     Find a steady cycles by pacing a 0D cell model at a constant BCL
@@ -40,10 +40,8 @@ def find_steadycycle(ode, BCL, dt, num_of_beats=50, odepath="../ode/",
     # Compile the ODE solver module
     if isinstance(ode, str):
         module, forward = create_module(ode, path=odepath)
-    elif isinstance(ode, list):
-        module, forward, ode = ode
     else:
-        module, forward = create_module(ode)
+        module, forward, ode = ode
 
     # Fetch model parameter list and init states
     model_params = module.init_parameter_values()
@@ -57,6 +55,7 @@ def find_steadycycle(ode, BCL, dt, num_of_beats=50, odepath="../ode/",
     # Set the BCL of the module
     model_params[index['BCL']] = BCL
 
+    num_of_beats = int(np.ceil(pace_time/BCL))
     t = 0.; tstop = num_of_beats*BCL
     while t  <= tstop:
         forward(states, t, dt, model_params)
@@ -66,7 +65,7 @@ def find_steadycycle(ode, BCL, dt, num_of_beats=50, odepath="../ode/",
     np.save(scpath+"%s_BCL%d" % (ode, BCL), states)
     return states
 
-def find_steadycycles(ode, BCL_range, dt, num_of_beats=50, odepath="../ode/", 
+def find_steadycycles(ode, BCL_range, dt, pace_time=50000, odepath="../ode/", 
                      scpath="../data/steadycycles/"):
     """
     Find stady cycles for a range of BCL values for a given ODE.
@@ -90,11 +89,13 @@ def find_steadycycles(ode, BCL_range, dt, num_of_beats=50, odepath="../ode/",
 
     # Find steady cycle for each BCL
     for BCL in BCL_range:
+        print "Pacing %s at BCL: %g..." % (ode, BCL),
         # Load initial conditions
         states = init_states
         # Set the BCL
         model_params[index['BCL']] = BCL
 
+        num_of_beats = int(np.ceil(pace_time/BCL))
         t = 0.; tstop = num_of_beats*BCL
         while t <= tstop:
             forward(states, t, dt, model_params)
@@ -102,63 +103,13 @@ def find_steadycycles(ode, BCL_range, dt, num_of_beats=50, odepath="../ode/",
 
         # Save the final state as the steady cycle
         np.save(scpath+"%s_BCL%d" % (ode, BCL), states)
+        print "Done"
 
 
 if __name__ == '__main__':
-    ### Example: Create ODE module and plot action potential
-    import numpy as np
-    import matplotlib.pyplot as plt 
-    dt = 0.01
-
-    ode = 'hAM_KSMT_nSR'
-    ode = 'hAM_KSMT_cAF'
-    ode = 'FK_nSR'
-    ode = 'FK_cAF'
-
-    module, forward = create_module(ode)
-    model_params = module.init_parameter_values()
-    states = module.init_state_values()
-
-    V_index = module.state_indices("V")
-    offset_index = module.parameter_indices("stim_offset")
-    BCL_index = module.parameter_indices("stim_period")
-
-    # Set parameters
-    model_params[BCL_index] = 500
-    model_params[offset_index] = 100
-
-    # Start array for recording results
-    V = [states[V_index]]
-
-    t = 0; tstop = 700
-    while t <= tstop:
-        forward(states, t, dt, model_params)
-        V.append(states[V_index])
-        t += dt
-
-    # Plot the results
-    tsteps = np.linspace(0, tstop, len(V))
-    plt.plot(tsteps, V, linewidth=2.0)
-    plt.xlabel(r"Time [ms]", fontsize=16)
-    plt.ylabel(r"V [mV]", fontsize=16)
-    plt.grid()
-    plt.savefig('../fig/action_potential_%s.png' % ode)
-    plt.show()
-    
-    '''
-    ### Example: Find steady cycle of an ODE model
-
-    dt = 0.01
-    BCL = 500
-    ode = 'hAM_KSMT_nSR'
-    find_steadystate(ode, BCL, dt)
-    '''
-
-    '''
     ### Example: Find steady cycle for a range of BCLs for same ODE
 
     dt = 0.01
-    BCL_range = range(1000,295,-5)
-    ode = 'hAM_KSMT_nSR'
-    find_steadystates(ode, BCL_range, dt, num_of_beats=num_of_beats)
-    '''
+    BCL_range = range(1000, 295, -5)
+    ode = 'hAM_KSMT_cAF'
+    find_steadycycles(ode, BCL_range, dt)
