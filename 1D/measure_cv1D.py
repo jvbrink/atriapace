@@ -20,6 +20,7 @@ from goss import dolfin_jit
 from cbcbeat.cardiacmodels import CardiacModel
 from cbcbeat.gossplittingsolver import GOSSplittingSolver
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Import function for pacing 0D cell model to find quasi steady-state
 import sys
@@ -29,239 +30,97 @@ from setup0D import create_module, find_steadycycle
 # Turn of dolfin printing
 set_log_level(ERROR)
 
-def GOSSparams():
-    params = GOSSplittingSolver.default_parameters()
-    params["pde_solver"] = "monodomain"
-    params["MonodomainSolver"]["linear_solver_type"] = "iterative"
-    params["MonodomainSolver"]["theta"] = 1.0
-    params["ode_solver"]["solver"] = "RL1"
-    params["apply_stimulus_current_to_pde"] = False
-    return params
+class TissueStrand:
+    def __init__(self, cellmodel, D, L=20, h=0.5, plot_args={},
+                 threshold=0, stim_amp=-1410*8, scpath="../data/steadycycles/"):
+        self.D = Constant(D)
+        self.L = 20
+        self.h = 0.5
 
-def pulse(ode, BCL, D, dt, stim_amp=-1410*8, odepath='../ode/', scpath="../data/steadycycles/",
-                           gossparams=GOSSparams()):
-    D = Constant(D) # Must be ajusted with temporal and spatial resolution
-    L = 20
-    h = 0.5
+        # Create dolfin mesh
+        self.N = int(L/h)
+        domain = IntervalMesh(self.N, 0, self.L)
 
-    # Create dolfin mesh
-    N = int(L/h)
-    domain = IntervalMesh(N, 0, L)
+        # Load the cell model from file
+        self.ode = cellmodel
+        ode = load_ode(cellmodel)
+        cellmodel = dolfin_jit(ode, field_states=['V'],
+                                    field_parameters=['stim_period', 'stim_amplitude'])
 
-    # Load the cell model from file
-    sys.path.append(odepath)
-    ode = load_ode(ode)
-    cellmodel = dolfin_jit(ode, field_states=['V'], 
-                                field_parameters=['stim_period', 'stim_amplitude'])
+        # Create the CardiacModel for the given mesh and cell model
+        t = Constant(0.0)
+        heart = CardiacModel(domain, t, self.D, None, cellmodel)
 
-    # Create the CardiacModel for the given mesh and cell model
-    t = Constant(0.0)
-    heart = CardiacModel(domain, t, D, None, cellmodel)
+        # Create the solver and extract the subsolvers
+        self.solver = GOSSplittingSolver(heart, self.GOSSparams())
+        self.dolfin_solver = self.solver.ode_solver # Solves spatial PDE
+        self.ode_solver = self.dolfin_solver._ode_system_solvers[0] # Solves ODE system
+        self.scpath = scpath
+        self.threshold = threshold
+        self.stim_amp = stim_amp
+        self.plot_args = plot_args
 
-    # Create the solver and extract the subsolvers
-    solver = GOSSplittingSolver(heart, gossparams)
-    dolfin_solver = solver.ode_solver # Solves spatial PDE
-    ode_solver = dolfin_solver._ode_system_solvers[0] # Solves ODE system
+    def GOSSparams(self):
+        params = GOSSplittingSolver.default_parameters()
+        params["pde_solver"] = "monodomain"
+        params["MonodomainSolver"]["linear_solver_type"] = "iterative"
+        params["MonodomainSolver"]["theta"] = 1.0
+        params["ode_solver"]["solver"] = "RL1"
+        params["apply_stimulus_current_to_pde"] = False
+        return params
 
-    # Set the stimulus parameter field
-    stim_field = np.zeros(2*(N+1), dtype=np.float_)
-    stim_field[0] = BCL
-    stim_field[1] = stim_amp
-    ode_solver.set_field_parameters(stim_field)
+    def pulse(self, BCL, dt=0.01, num_of_pulses=5, threshold=0, liveplot=False):
+        # Initialize cell by pacing 0D cell model
+        try:
+            states = np.load(self.scpath+"%s_BCL%d.npy" % (self.ode, BCL))
+        except:
+            print "Steady cycle at BCL=%d for ODE model: %s not found." % (BCL, self.ode)
+            print "Pacing 0D cell model to find it, this may take a minute."
+            states = find_steadycycle(self.ode, BCL, dt, scpath=self.scpath)
+            print "Steady cycle found, proceeding to do 1D tissue simulation."
 
-    # Get 0D cell data
-    try:
-        states = np.load(scpath+"%s_BCL%d.npy" % (ode, BCL))
-    except:
-        print "Steady cycle at BCL=%d for ODE model: %s not found." % (BCL, ode)
-        print "Pacing 0D cell model to find it, this may take a minute."
-        states = find_steadycycle(ode, BCL, dt, odepath=odepath, scpath=scpath)
-        print "Steady cycle found, proceeding to do 1D tissue simulation."
+        # Set the stimulus parameter field
+        N, L, h = self.N, self.L, self.h
+        stim_field = np.zeros(2*(N+1), dtype=np.float_)
+        stim_field[::2] = BCL
+        stim_field[-1] = self.stim_amp
+        self.ode_solver.set_field_parameters(stim_field)
 
-    # Load states into 1D model
-    (u, um) = solver.solution_fields()
-    for node in range(N+1):
-        ode_solver.states(node)[:] = states 
-        u.vector()[node] = states[0]   
+        # Load states into 1D model
+        (u, um) = self.solver.solution_fields()
+        for node in range(N+1):
+            self.ode_solver.states(node)[:] = states.copy()
+            u.vector()[node] = states[0]
 
-    # # Solve the equations over time
-    for timestep, (u, vm) in solver.solve((0, 10), dt):
-        plot(u, range_min=-80.0, range_max=60.0)
+        # Do 5 pulses and measure CV
+        threshold = self.threshold
+        for i in range(5):
+            t0 = 0; t1 = 0
+            for timestep, (u, vm) in self.solver.solve((i*BCL, i*BCL+50), dt):
+                if liveplot: plot(u, **self.plot_args)
 
-#     results = np.zeros((4, len(BCL_range)))
+                x = u.vector()[35]; y = u.vector()[20]
+                if x > threshold and (x-threshold)*(xp-threshold) < 0:
+                    t0 = (threshold - xp)/(x - xp)*dt + tp 
+                if y > threshold and (y-threshold)*(yp-threshold) < 0:
+                    t1 = (threshold - yp)/(y - yp)*dt + tp 
+                    Cv = 15*h/(t1-t0)*1e3
+                    print "BCL: %d\t Pulse: %d\t CV: %g" % (BCL, i+1, Cv)
+                    t0 = 0; t1 = 0
 
-#     for i, BCL in enumerate(BCL_range):
-#         # Set the stimulus parameter field
-#         stim_field = np.zeros(2*(N+1), dtype=np.float_)
-#         stim_field[0] = BCL
-#         stim_field[1] = stim_amp
-#         ode_solver.set_field_parameters(stim_field)
+                xp = x
+                yp = y
+                tp = timestep[0]
 
-#         # Pace 0D cell model and find quasi steady state 
-#         sspath = "../data/steadystates/"
-#         try:
-#             states = np.load(sspath+"steadystate_%s_BCL%d.npy" % (ode, BCL))
-#         except:
-#             print "Did not find steadystate for %s at BCL: %g, pacing 0D model" % (ode, BCL)
-#             find_steadystate(ODE, BCL, 0.01)
-        
-#         # Load quasi steady state into 1D model
-#         (u, um) = solver.solution_fields()
-#         for node in range(N+1):
-#             ode_solver.states(node)[:] = states
-#             u.vector()[node] = states[0] 
-
-#         # Used for measuring cell activation
-#         xp = 0; yp=0
-#         results[0][i] = BCL
-#         print "BCL: %g" % BCL
-#         # Do 3 pulses
-
-#         for pulsenr in range(1,4):
-#             # Solve the pulse in higher temporal resolution
-#             for timestep, (u, vm) in solver.solve((i*BCL, i*BCL+50), dt):
-#                 if plot_args: plot(u, **plot_args)
-#                 print "Testing"
-
-#                 x = u.vector()[20]
-#                 y = u.vector()[35]
-
-#                 if x > threshold and (x-threshold)*(xp-threshold) < 0:
-#                     t0 = (threshold - xp)/(x - xp)*dt + tp 
-#                 if y > threshold and (y-threshold)*(yp-threshold) < 0:
-#                     t1 = (threshold - yp)/(y - yp)*dt + tp 
-#                     # Calculate conduction velocity
-#                     Cv = 15*h/(t1-t0)*1e3
-#                     print "\tCv: %g" % Cv
-#                     results[pulsenr][i] = Cv
-#                     t0 = 0; t1 = 0
-
-#                 xp = x
-#                 yp = y
-#                 tp = timestep[0]
-
-#             print "adada"
-
-#             # Wait for next pulse
-#             for timestep, (u, vm) in solver.solve((i*BCL+50, (i+1)*BCL), dt_low):
-#                 if plot_args: plot(u, **plot_args)
-
+            for timestep, (u, vm) in self.solver.solve((i*BCL+50, (i+1)*BCL), 10*dt):
+                if liveplot: plot(u, **self.plot_args)
 
 if __name__ == '__main__':
-    pulse('hAM_KSMT_nSR', 500, 0.31, 0.01, stim_amp=-1410*8)
+    # Only one of these should be 'active' at once
+    #solver = TissueStrand('hAM_KSMT_nSR', 0.31, stim_amp=-1410*8, threshold=0, plot_args={'range_min':-80.0, 'range_max':40.0})
+    #solver = TissueStrand('hAM_KSMT_cAF', 0.31, stim_amp=-1410*8, threshold=0, plot_args={'range_min':-80.0, 'range_max':40.0})
+    solver = TissueStrand('FK_nSR', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
+    #solver = TissueStrand('FK_cAF', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
 
-# def GOSSparams():
-#     params = GOSSplittingSolver.default_parameters()
-#     params["pde_solver"] = "monodomain"
-#     params["MonodomainSolver"]["linear_solver_type"] = "iterative"
-#     params["MonodomainSolver"]["theta"] = 1.0
-#     params["ode_solver"]["solver"] = "RL1"
-#     params["apply_stimulus_current_to_pde"] = False
-#     return params
+    solver.pulse(1000, num_of_pulses=5, liveplot=True)
 
-# def pacing_cv(ode, BCL_range, D, dt, threshold=0, stim_amp=0, plot_args=None):
-#     D = Constant(D) # Must be adjusted with temporal and spatial resolution
-#     L = 20
-#     h = 0.5
-#     dt_low = 0.1
-
-#     # Create dolfin mesh
-#     N = int(L/h)
-#     domain = IntervalMesh(N, 0, L)
-
-#     # Load the cell model from file
-#     ode = load_ode(ode)
-#     cellmodel = dolfin_jit(ode, field_states=["V"], 
-#                             field_parameters=["stim_period", "stim_amplitude"])
-
-#     # Create the CardiacModel for the given mesh and cell model
-#     heart = CardiacModel(domain, Constant(0.0), D, None, cellmodel)
-
-#     # Create the solver
-#     solver = GOSSplittingSolver(heart, GOSSparams())
-
-#     # Get the solution fields and subsolvers
-#     dolfin_solver = solver.ode_solver
-#     ode_solver = dolfin_solver._ode_system_solvers[0]
-
-#     results = np.zeros((4, len(BCL_range)))
-
-#     for i, BCL in enumerate(BCL_range):
-#         # Set the stimulus parameter field
-#         stim_field = np.zeros(2*(N+1), dtype=np.float_)
-#         stim_field[0] = BCL
-#         stim_field[1] = stim_amp
-#         ode_solver.set_field_parameters(stim_field)
-
-#         # Pace 0D cell model and find quasi steady state 
-#         sspath = "../data/steadystates/"
-#         try:
-#             states = np.load(sspath+"steadystate_%s_BCL%d.npy" % (ode, BCL))
-#         except:
-#             print "Did not find steadystate for %s at BCL: %g, pacing 0D model" % (ode, BCL)
-#             find_steadystate(ODE, BCL, 0.01)
-        
-#         # Load quasi steady state into 1D model
-#         (u, um) = solver.solution_fields()
-#         for node in range(N+1):
-#             ode_solver.states(node)[:] = states
-#             u.vector()[node] = states[0] 
-
-#         # Used for measuring cell activation
-#         xp = 0; yp=0
-#         results[0][i] = BCL
-#         print "BCL: %g" % BCL
-#         # Do 3 pulses
-
-#         for pulsenr in range(1,4):
-#             # Solve the pulse in higher temporal resolution
-#             for timestep, (u, vm) in solver.solve((i*BCL, i*BCL+50), dt):
-#                 if plot_args: plot(u, **plot_args)
-#                 print "Testing"
-
-#                 x = u.vector()[20]
-#                 y = u.vector()[35]
-
-#                 if x > threshold and (x-threshold)*(xp-threshold) < 0:
-#                     t0 = (threshold - xp)/(x - xp)*dt + tp 
-#                 if y > threshold and (y-threshold)*(yp-threshold) < 0:
-#                     t1 = (threshold - yp)/(y - yp)*dt + tp 
-#                     # Calculate conduction velocity
-#                     Cv = 15*h/(t1-t0)*1e3
-#                     print "\tCv: %g" % Cv
-#                     results[pulsenr][i] = Cv
-#                     t0 = 0; t1 = 0
-
-#                 xp = x
-#                 yp = y
-#                 tp = timestep[0]
-
-#             print "adada"
-
-#             # Wait for next pulse
-#             for timestep, (u, vm) in solver.solve((i*BCL+50, (i+1)*BCL), dt_low):
-#                 if plot_args: plot(u, **plot_args)
-
-
-#     np.save("../data/results/cv_%s"%ode, results) 
-
-# if __name__ == '__main__':
-#     odes = ['hAM_KSMT_nSR', 'hAM_KSMT_cAF', 'FK_nSR', 'FK_cAF']
-
-#     thresholds = [0, 0, 0.5, 0.5]
-#     stim_amps = [-1410*8, -1410*8, -0.8, -0.8]
-#     Ds = [0.31, 0.31, 0.078, 0.078]
-
-#     dt = 0.01
-#     BCL_range = xrange(1000, 295, -5)
-
-#     for i in range(len(odes)-1):
-#         ode = odes[i]
-#         threshold = thresholds[i]
-#         stim_amp = stim_amps[i]
-#         D = Ds[i]
-
-#         plot_args = {'range_min':-80.0, 'range_max':40.0}
-
-#         pacing_cv(ode, BCL_range, D, dt, threshold=threshold, stim_amp=stim_amp, plot_args={'range_min':-80., 'range_max':40., 'interactive':True})
-    
