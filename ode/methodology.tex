@@ -1,0 +1,260 @@
+\documentclass[a4paper, 11pt, notitlepage, english]{article}
+
+\usepackage{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc, url}
+\usepackage{textcomp}
+\usepackage{amsmath, amssymb}
+\usepackage{amsbsy, amsfonts}
+\usepackage{graphicx, color, xcolor}
+\usepackage{verbatim, listings, fancyvrb}
+\usepackage{parskip}
+\usepackage{framed}
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{url}
+\usepackage{flafter}
+\usepackage{simplewick}
+\usepackage{amsthm}
+\usepackage{bbold}
+
+
+\usepackage{caption}
+\DeclareCaptionLabelSeparator{colon}{. }
+\renewcommand{\captionfont}{\small\sffamily}
+\renewcommand{\captionlabelfont}{\bf\sffamily}
+\usepackage{float}
+%\floatstyle{ruled}
+%\restylefloat{figure}
+\setlength{\captionmargin}{20pt}
+%\addto\captionsenglish{\renewcommand{\figurename}{Fig.}}
+\usepackage{bigstrut}
+\setlength{\tabcolsep}{12pt}
+
+
+\newtheorem{theorem}[]{Wick's Theorem}[]
+
+\DeclareUnicodeCharacter{00A0}{~}
+
+\definecolor{javared}{rgb}{0.6,0,0} % for strings
+\definecolor{javagreen}{rgb}{0.25,0.5,0.35} % comments
+\definecolor{javapurple}{rgb}{0.5,0,0.35} % keywords
+\definecolor{javadocblue}{rgb}{0.25,0.35,0.75} % javadoc
+
+\lstset{language=python,
+basicstyle=\ttfamily\scriptsize,
+keywordstyle=\color{javapurple},%\bfseries,
+stringstyle=\color{javared},
+commentstyle=\color{javagreen},
+morecomment=[s][\color{javadocblue}]{/**}{*/},
+morekeywords={super, with},
+% numbers=left,
+% numberstyle=\tiny\color{black},
+stepnumber=2,
+numbersep=10pt,
+tabsize=2,
+showspaces=false,
+captionpos=b,
+showstringspaces=false,
+frame= single,
+breaklines=true}
+
+\usepackage{geometry}
+\geometry{headheight=0.01mm}
+\geometry{top=20mm, bottom=20mm, left=34mm, right=34mm}
+
+\renewcommand{\arraystretch}{2}
+\setlength{\tabcolsep}{10pt}
+\makeatletter
+\renewcommand*\env@matrix[1][*\c@MaxMatrixCols c]{%
+  \hskip -\arraycolsep
+  \let\@ifnextchar\new@ifnextchar
+  \array{#1}}
+%
+% Definering av egne kommandoer og miljøer
+%
+\newcommand{\dd}[1]{\ \text{d}#1}
+\newcommand{\f}[2]{\frac{#1}{#2}} 
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+\newcommand{\bra}[1]{\langle #1|}
+\newcommand{\ket}[1]{|#1 \rangle}
+\newcommand{\braket}[2]{\langle #1 | #2 \rangle}
+\newcommand{\brakket}[2]{\langle #1 || #2 \rangle}
+\newcommand{\braup}[1]{\langle #1 \left|\uparrow\rangle\right.}
+\newcommand{\bradown}[1]{\langle #1 \left|\downarrow\rangle\right.}
+\newcommand{\av}[1]{\left| #1 \right|}
+\newcommand{\op}[1]{\hat{#1}}
+\newcommand{\braopket}[3]{\langle #1 | {#2} | #3 \rangle}
+\newcommand{\ketbra}[2]{\ket{#1}\bra{#2}}
+\newcommand{\pp}[1]{\frac{\partial}{\partial #1}}
+\newcommand{\ppn}[1]{\frac{\partial^2}{\partial #1^2}}
+\newcommand{\up}{\left|\uparrow\rangle\right.}
+\newcommand{\upup}{\left|\uparrow\uparrow\rangle\right.}
+\newcommand{\down}{\left|\downarrow\rangle\right.}
+\newcommand{\downdown}{\left|\downarrow\downarrow\rangle\right.}
+\newcommand{\updown}{\left|\uparrow\downarrow\rangle\right.}
+\newcommand{\downup}{\left|\downarrow\uparrow\rangle\right.}
+\newcommand{\bupup}{\left.\langle\uparrow\uparrow\right|}
+\newcommand{\bdowndown}{\left.\langle\downarrow\downarrow\right|}
+\newcommand{\bupdown}{\left.\langle\uparrow\downarrow\right|}
+\newcommand{\bdownup}{\left.\langle\downarrow\uparrow\right|}
+\renewcommand{\d}{{\rm d}}
+\newcommand{\Res}[2]{{\rm Res}(#1;#2)}
+\newcommand{\To}{\quad\Rightarrow\quad}
+\newcommand{\eps}{\epsilon}
+\newcommand{\inner}[2]{\langle #1 , #2 \rangle}
+\renewcommand{\u}{\uparrow}
+% \renewcommand{\d}{\downarrow}
+\newcommand{\dddd}{\d\d\d\d}
+\newcommand{\uddd}{\u\d\d\d}
+\newcommand{\dudd}{\d\u\d\d}
+\newcommand{\ddud}{\d\d\u\d}
+\newcommand{\dddu}{\d\d\d\u}
+\newcommand{\uudd}{\u\u\d\d}
+\newcommand{\udud}{\u\d\u\d}
+\newcommand{\uddu}{\u\d\d\u}
+\newcommand{\duud}{\d\u\u\d}
+\newcommand{\dudu}{\d\u\d\u}
+\newcommand{\dduu}{\d\d\u\u}
+\newcommand{\uuud}{\u\u\u\d}
+\newcommand{\uudu}{\u\u\d\u}
+\newcommand{\uduu}{\u\d\u\u}
+\newcommand{\duuu}{\d\u\u\u}
+\newcommand{\uuuu}{\u\u\u\u}
+\newcommand{\m}{\text{-}}
+\newcommand{\ui}{{\u_1}}
+\newcommand{\uii}{{\u_2}}
+\newcommand{\uiii}{{\u_3}}
+\newcommand{\di}{{\d_1}}
+\newcommand{\dii}{{\d_2}}
+\newcommand{\diii}{{\d_3}}
+
+\newenvironment{psmallmatrix}
+  {\left(\begin{smallmatrix}}
+  {\end{smallmatrix}\right)}
+
+\newenvironment{bsmallmatrix}
+  {\left[\begin{smallmatrix}}
+  {\end{smallmatrix}\right]}
+
+
+
+\newcommand{\bt}[1]{\boldsymbol{#1}}
+\newcommand{\mat}[1]{\textsf{\textbf{#1}}}
+\newcommand{\I}{\boldsymbol{\mathcal{I}}}
+\newcommand{\p}{\partial}
+
+\title{Computing restitution properties and plotting curves}
+\author{Jonas van den Brink \\ \texttt{j.v.brink@fys.uio.no}}
+
+\begin{document}
+
+\maketitle
+
+\begin{enumerate}
+  \item Action potential duration (APD$_{90}$)
+  \item Effective refractatory period (ERP)
+  \item Conduction Velocity ($C_V$)
+  \item Wavelength (WL)
+\end{enumerate}
+
+Of these four, we can compute the two first in a 0D cell model, while we need a 1D tissue strand to find nr 3 and 4.
+
+\clearpage
+
+\section*{Action potential duration---APD$_{90}$}
+
+\clearpage
+
+\section*{Effective refractatory period---ERP}
+
+
+\clearpage
+
+
+\section*{The Conduction Velocity---$C_V$}
+
+The conduction velocity is the speed a signal propagtes through the tissue. Recall that the signal propagation through the tissue is goverened by the monodomain equations, which is an example of a \emph{reaction-diffusion} equation. The system is a set of grid-points, or nodes. Each node describe a collection of cells. As a cell fires an action potential, the rising membrane potential can diffuse to nearby cells, causing them to fire, and this propagates the potential.
+
+The conduction velocity results from a complex set of factors, and is strongly dependant on both the cell model, as well as the tissue properties, such as the diffusion coefficient. There is therefore no simple way of calculating the conduction velocity, and we should simply simulate a propagating wave and measure it from the simulation.
+
+To do this, we denote some sort of threshold for activation, when the potential in a grid point rises above the treshold, we say the cell activates. We then monitor two grid pints, $x_0$ and $x_1$ and measure the time they activate. The conduction velocity is then estimated from
+$$C_V \simeq \frac{x_1 - x_0}{t_1 - t_0}.$$
+
+\subsubsection*{Code specifics}
+
+As mentioned, the conduction velocity depends on a lot of different parameters. The cell model itself affects things, as does the tissue diffusion coefficient. The diffusion coefficient, $D$, again depends on numerical properties, such as the time constant and spacing $h$. To set $D$, we simply use the fact that the conduction velocity at a BCL of 1 second should be roughly 750 mm/s. I have already done this and set the diffusion coefficient for both the Koivumäki and FK models.
+
+
+To simulate the tissue strand, we use 40 grid points, letting each be $0.5$ mm apart, this means we simulate a piece of tissue that is 20 mm long. For every time step, we must solve the ODEs for the cell model for every single grid point, so this computation will be a lot more costly than the 0D measurements.
+
+We start of by loading the steady cycle from the 0D cell model into the tissue strand. But we still should send at least a few pulses through the strand, so that the system approaches a steady cycle for the entire strand. In the program, we do 5 pulses at every given BCL, and print the conduction velocities for each pulse. The last result should be used when plotting the results. As the simulations are so costly in comparsion to the 0D measurements, we do them for fewer BCLs, maybe every 50 or so.
+
+I have also implemented so you can plot in real-time, or not. Plotting is a great way to get a feel for what is going on and how things are working, but they slow down everything considerably. I therefore think you should run the scripts a few time in plot-mode to see how it works, and then without plotting to get a speed-up.
+
+I have also implemented a changing time step, it is important to have a small time step when a cell is firing an action potential, as there are very rapidly changing states which we can only catch properily with a small $\Delta t$, but when the pulse has passed through the grid, and all cells are slowly moving back to resting, we can increase the $\Delta t$. You will see this very clearly if you run the program in plot-mode.
+
+\subsubsection*{Running to code}
+
+Open the file \verb!/1D/measure_cv1D.py!. You should only need to change the lines at the bottom to run the program for different cell models and BCL's. These lines looks something like this
+\begin{lstlisting}
+solver = TissueStrand('hAM_KSMT_nSR', 0.31, ...)
+#solver = TissueStrand('hAM_KSMT_cAF', 0.31, ...)
+#solver = TissueStrand('FK_nSR', 0.077, ...)
+#solver = TissueStrand('FK_cAF', 0.077, ...)
+
+solver.pulse(1000, num_of_pulses=5, liveplot=True)
+\end{lstlisting}
+
+Here, the first line selects what cell model we are using, the rest of the parameters are just so the rest of the script works with the given cell model. You should not mess with these parameters, just choose the different cell models by using one of the first 4 lines (comment in and out using the number symbol \verb+#+).
+
+The sixth line here, is where the script is actually promted to produce results. The first number is the BCL in ms, here it is 1000, that means, 1 second, the \verb+num_of_pulses+ are the number of pulses to use and \verb+liveplot+ denotes whether or not to plot in real time while simulating. In this line, you can change all of these paramters.
+
+The BCL should of course be changed, so that we can get a restitution curve. Live plotting should only be used to study the system, setting it to \verb+False+ yields a big speed-up, so that should be used when simulating for many different BCLs. The number of pulses can be reduced to get a faster running time, but you should first study how much the CV changes from pulse to pulse.
+
+To run for many BCLs in a row, you can use the range function and leave the script running for a long while, for example:
+\begin{lstlisting}
+solver = TissueStrand('hAM_KSMT_nSR', 0.31, ...)
+
+for BCL in range(1000, 300, -50):
+  solver.pulse(BCL, num_of_pulses=5, liveplot=False)
+\end{lstlisting}
+
+If you want to also set it up so that the script does this for all the ODEs, you can do it like this
+\begin{lstlisting}
+solver_list = [TissueStrand('hAM_KSMT_nSR', 0.31, ...),
+               TissueStrand('hAM_KSMT_cAF', 0.31, ...),
+               TissueStrand('FK_nSR', 0.077, ...),
+               TissueStrand('FK_cAF', 0.077, ...)]
+
+for solver in solver_list:  
+    for BCL in range(1000, 300, -50):
+        solver.pulse(BCL, num_of_pulses=5, liveplot=False)
+\end{lstlisting}
+
+\clearpage
+
+\section*{Wavelength}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
