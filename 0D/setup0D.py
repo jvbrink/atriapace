@@ -111,5 +111,5 @@ if __name__ == '__main__':
 
     dt = 0.01
     BCL_range = range(1000, 295, -5)
-    ode = 'hAM_KSMT_cAF'
+    ode = 'FK_nSR'
     find_steadycycles(ode, BCL_range, dt)

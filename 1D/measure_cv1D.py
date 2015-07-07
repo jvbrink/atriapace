@@ -34,8 +34,8 @@ class TissueStrand:
     def __init__(self, cellmodel, D, L=20, h=0.5, plot_args={},
                  threshold=0, stim_amp=-1410*8, scpath="../data/steadycycles/"):
         self.D = Constant(D)
-        self.L = 20
-        self.h = 0.5
+        self.L = L
+        self.h = h
 
         # Create dolfin mesh
         self.N = int(L/h)
@@ -69,14 +69,14 @@ class TissueStrand:
         params["apply_stimulus_current_to_pde"] = False
         return params
 
-    def pulse(self, BCL, dt=0.01, num_of_pulses=5, threshold=0, liveplot=False):
+    def pulse(self, BCL, dt=0.1, num_of_pulses=5, threshold=0, liveplot=False):
         # Initialize cell by pacing 0D cell model
         try:
             states = np.load(self.scpath+"%s_BCL%d.npy" % (self.ode, BCL))
         except:
             print "Steady cycle at BCL=%d for ODE model: %s not found." % (BCL, self.ode)
             print "Pacing 0D cell model to find it, this may take a minute."
-            states = find_steadycycle(self.ode, BCL, dt, scpath=self.scpath)
+            states = find_steadycycle(self.ode, BCL, dt, odepath="", scpath=self.scpath)
             print "Steady cycle found, proceeding to do 1D tissue simulation."
 
         # Set the stimulus parameter field
@@ -117,10 +117,10 @@ class TissueStrand:
 
 if __name__ == '__main__':
     # Only one of these should be 'active' at once
-    #solver = TissueStrand('hAM_KSMT_nSR', 0.31, stim_amp=-1410*8, threshold=0, plot_args={'range_min':-80.0, 'range_max':40.0})
+    solver = TissueStrand('hAM_KSMT_nSR', 0.40, stim_amp=-1410*8, threshold=0, plot_args={'range_min':-80.0, 'range_max':40.0})
     #solver = TissueStrand('hAM_KSMT_cAF', 0.31, stim_amp=-1410*8, threshold=0, plot_args={'range_min':-80.0, 'range_max':40.0})
-    solver = TissueStrand('FK_nSR', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
+    #solver = TissueStrand('FK_nSR', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
     #solver = TissueStrand('FK_cAF', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
 
-    solver.pulse(1000, num_of_pulses=5, liveplot=True)
+    solver.pulse(1000, dt=0.1, num_of_pulses=5, liveplot=True)
 

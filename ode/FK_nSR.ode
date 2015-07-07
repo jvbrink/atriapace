@@ -70,6 +70,5 @@ dv_dt = (1 - Conditional(Ge(V,Vna),1,0))*(1 - v)/((1 - Conditional(Ge(V,Vv),1,0)
 dw_dt = (1 - Conditional(Ge(V,Vw),1,0))*(1-w)/twm - Conditional(Ge(V,Vw),1,0)*w/twp
 dd_dt = ((1 - Conditional(Ge(V,Vd),1,0))/tsm + Conditional(Ge(V,Vd),1,0)/tsp)*((1+tanh(xk*(V-Vcsi)))/2.0-d)
 
-([1 + tanh(xk*(V-Vcsi))]/2.0 - d)
-w
+
 
