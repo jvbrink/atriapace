@@ -118,7 +118,7 @@ class TissueStrand:
 if __name__ == '__main__':
     # Only one of these should be 'active' at once
     solver = TissueStrand('hAM_KSMT_nSR', 0.40, stim_amp=-1410*8, threshold=0, plot_args={'range_min':-80.0, 'range_max':40.0})
-    #solver = TissueStrand('hAM_KSMT_cAF', 0.31, stim_amp=-1410*8, threshold=0, plot_args={'range_min':-80.0, 'range_max':40.0})
+    #solver = TissueStrand('hAM_KSMT_cAF', 0.40, stim_amp=-1410*8, threshold=0, plot_args={'range_min':-80.0, 'range_max':40.0})
     #solver = TissueStrand('FK_nSR', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
     #solver = TissueStrand('FK_cAF', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
 
