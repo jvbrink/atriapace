@@ -96,7 +96,7 @@ class TissueSquare:
                 t1 = timestep[0]
                 # Calculate conduction velocity
                 print "CV: ", 2*d*self.h/(t1-t0)*1e3
-
+            
     def spiral_wave(self, BCL, dt=0.1, tstop=0, S2time=300, savefig=False):
         # Initialize cell by pacing 0D cell model
         try:
@@ -127,26 +127,26 @@ class TissueSquare:
         # Apply S1 stimulus and simulate up until S2
         self.ode_solver.set_field_parameters(S1)
         for timestep, (u, vm) in self.solver.solve((0, S2time), dt):
-            fig = plot(u, interactive=False, **self.plot_args)
+            fig = plot(u, **self.plot_args)
             if savefig and cnt % 10 == 0:
                 padded_index = '%04d' % (cnt/10)
-                fig.write_png('../tmp/spiral_%s' % self.ode + padded_index)
+                fig.write_png('tmp/spiral_%s' % self.ode + padded_index)
             cnt += 1
             
         self.ode_solver.set_field_parameters(S2)
         for timestep, (u, vm) in self.solver.solve((S2time, S2time+10), dt):
-            fig = plot(u, interactive=False, **self.plot_args)
+            fig = plot(u, **self.plot_args)
             if savefig and cnt % 10 == 0:
                 padded_index = '%04d' % (cnt/10)
-                fig.write_png('../tmp/spiral_%s' % self.ode + padded_index)
+                fig.write_png('tmp/spiral_%s' % self.ode + padded_index)
             cnt += 1
         
         self.ode_solver.set_field_parameters(nostim)
         for timestep, (u, vm) in self.solver.solve((S2time+10, tstop), dt):
-            fig = plot(u, interactive=False, **self.plot_args)
+            fig = plot(u, **self.plot_args)
             if savefig and cnt % 10 == 0:
                 padded_index = '%04d' % (cnt/10)
-                fig.write_png('../tmp/spiral_%s' % self.ode + padded_index)
+                fig.write_png('tmp/spiral_%s' % self.ode + padded_index)
             cnt += 1
                      
     def GOSSparams(self):
