@@ -1,0 +1,469 @@
+#**************************************************************************
+# Human atrial myocyte model --- Normal Sinus Rythm
+#
+# Citation:
+# Koivumaki JT, Korhonen T, Tavi P (2011) 
+# Impact of Sarcoplasmic Reticulum Calcium Release on Calcium Dynamics and
+# Action Potential Morphology in Human Atrial Myocytes: A Computational Study.
+# PLoS Comput Biol 7(1): e1001067.
+# http://dx.doi.org/10.1371/journal.pcbi.1001067
+#**************************************************************************
+
+states(V = ScalarParam(-75.20, unit="mV", description="Membrane potential"),
+       Nai = ScalarParam(8.851, unit="mM", description="Intracellular Na"),
+       Nass = ScalarParam(8.513, unit="mM", description="Subspace Na"),  
+       Ki = ScalarParam(135.2, unit="mM", description="Intracellular K"),  
+       Cass = ScalarParam(0.0001737, description="Subspace Ca"))
+
+parameters(F = ScalarParam(96487, unit="C*mole**-1", description="Faraday constant"),
+           R = ScalarParam(8314.5, unit="mJ*mole**-1*K**-1", description="Ideal gas constant"),
+           T = ScalarParam(306.15, unit="K", description="Temperature"),
+           Nao = ScalarParam(130, unit="mM", description="Extracellular Na"),
+           Cao = ScalarParam(1.8, unit="mM", description="Extracellular Ca"),
+           Ko  = ScalarParam(5.4, unit="mM", description="Extracellular K"),
+           Cm = ScalarParam(0.05, unit="nF", description="Cell membrane capacitance"))
+
+# Reversal potentials, from Nernst equation
+ENa = R*T/F * log(Nao/Nass)
+EK  = R*T/F * log(Ko/Ki)
+ECa = R*T/F/2 * log(Cao/Cass)
+
+#********************************************
+# Sodium Current, INa
+#********************************************
+
+states(m = 0.002854, # Activation gate
+       h1 = 0.9001,  # Fast inactivation gate
+       h2 = 0.9003)  # Slow inactivation gate
+
+parameters(PNa = ScalarParam(0.0018, unit="nL*s**-1", description="Permeability of INa"))
+
+# Activation functions
+m_inf = 1/(1 + exp(-(V+27.12)/8.21))
+h_inf = 1/(1 + exp((V+63.6)/5.3))
+
+# Time constants
+tau_m  = 0.024 + 0.042*exp(-((V+25.57)/28.8)**2)
+tau_h1 = 0.3 + 30/(1+exp((V+35.1)/3.2))
+tau_h2 = 3 + 120/(1+exp((V+35.1)/3.2))
+
+# Sodium current
+INa = PNa * m**3 * (0.9*h1+0.1*h2) * Nao * V * F**2/(R*T) * (exp((V-ENa)*F/R/T)-1)/(exp(V*F/R/T)-1)
+
+# INa
+dm_dt  = (m_inf - m)/tau_m
+dh1_dt = (h_inf - h1)/tau_h1    
+dh2_dt = (h_inf - h2)/tau_h2   
+
+#********************************************
+# L-type Calcium, ICaL
+#********************************************
+
+states(d = ScalarParam(0.00001104, description="Voltage dep. activation gate of ICaL"),
+       f = ScalarParam(0.9988, description="Voltage dep. inactivation gate of ICaL"),
+       fca = ScalarParam(0.9226, description="Calcium dep. inactivation gate"))
+       
+parameters(ECa_app = ScalarParam(60, unit="mV", description="Apparent reversal potential"),
+           gCaL = ScalarParam(15, unit="nS", description="Maximum conductance"),
+           kCa = ScalarParam(0.6e-3, unit="mM", description="Half-maxmum binding concentration"),
+           kCan = 2) #?
+
+# Current, unit = pA
+ICaL = gCaL * d * f * fca * (V - ECa_app)
+
+# Activation functions
+d_inf = 1/(1 + exp(-(V+9)/5.8))
+f_inf = 0.04 + 0.96/(1 + exp((V+25.5)/8.4)) + 1/(1 + exp(-(V-60)/8.0))
+fca_inf = 1 - 1/(1 + (kCa/Cass)**(kCan))
+
+# Time constants, unit: ms
+tau_d = 0.5 + 0.65*exp(-((V+35.0)/30.0)**2)
+tau_f = 40.0 + 1340.0*exp(-((V+40)/14.2)**2)
+tau_fca = 2.0
+
+dd_dt = (d_inf - d)/tau_d
+df_dt = (f_inf - f)/tau_f
+dfca_dt = (fca_inf - fca)/tau_fca
+
+#********************************************
+# Transient Outward Current, It
+#********************************************
+
+states(tr = ScalarParam(0.0009795, description="Activation gate of It"),
+       ts = ScalarParam(0.9535, description="Inactivation gate of It"))
+
+parameters(gt = ScalarParam(8.25, unit="nS", description="Max conductance of It"))
+
+# Current, unit=pA        
+It = gt * tr * ts * (V - EK)
+
+# Activation functions
+tr_inf = 1/(1+exp(-(V-1)/11))
+ts_inf = 1/(1+exp((V+40.5)/11.5))
+
+# Time constants, Unit: s
+tau_tr = 1.5 + 3.5*exp(-((V+0)/30)**2)
+# ts_tau = 14.14 + 481.2*exp(-((V+52.45)/14.97)**2) # Original
+tau_ts = 14.14 + 25.635*exp(-((V+52.45)/15.8827)**2) # Maleckar et al.
+
+dtr_dt = (tr_inf - tr)/tau_tr
+dts_dt = (ts_inf - ts)/tau_ts
+
+#*************************************************
+# Potassium currents, IKr, IKs, IKur, IK1
+#*************************************************
+
+states(r = ScalarParam(0.0003196, description="Activation gate of Kur"),
+       s = ScalarParam(0.9726, description="Inactivation gate of Kur"),
+       n = ScalarParam(0.004421, description="Activation gate of Ks"),
+       pa = ScalarParam(0.00004354, description="Activation gate of Kr"))
+
+p_i = 1/(1+exp((V+55)/24))
+
+parameters(gKs = ScalarParam(1, unit="nS", description="Max conductance of IKs"),
+           gKr = ScalarParam(0.5, unit="nS", description="Max conductance of IKr"),
+           gKur = ScalarParam(2.25, unit="nS", description="Max conductance of IKur"),
+           gK1 = ScalarParam(3.45, unit="nS", description="Max conductance of IK1"))
+
+# Currents, unit = pA
+IKs  = gKs  * n   * (V - EK)
+IKr  = gKr  * pa * p_i * (V - EK)
+IKur = gKur * r   * s * (V - EK)
+IK1  = gK1 * Ko**0.4457 * (V - EK) / (1+exp(1.5*(V-EK+3.6)*F/R/T))
+
+# Activation functions
+r_inf =  1/(1 + exp(-(V+6)/8.6)) # Maleckar et al.
+s_inf =  1/(1 + exp((V+7.5)/10)) # Maleckar et al.
+n_inf =  1/(1 + exp(-(V-19.9)/12.7))
+pa_inf = 1/(1 + exp(-(V+15)/6))
+
+# Time constants, Unit: ms
+tau_r = 0.5 + 9.0/(1 + exp((V+5)/12)) # Maleckar et al.
+tau_s = 1e3*(0.59/(1 + exp((V + 60)/10)) + 3.05) # Maleckar et al.
+tau_n = 700.0 + 400.0*exp(-((V-20)/20)**2)
+tau_pa = 31.18 + 217.18*exp(-((V+20.1376)/22.1996)**2)
+
+dr_dt = (r_inf - r)/tau_r
+ds_dt = (s_inf - s)/tau_s
+dn_dt = (n_inf - n)/tau_n
+dpa_dt = (pa_inf - pa)/tau_pa
+
+#*************************************************
+# Background currents, INab, ICab
+#*************************************************
+
+parameters(gNab = ScalarParam(0.060599, description="Conductance of Nab"),
+           gCab = ScalarParam(0.0952, description="Conductance of Cab"))
+
+# Leak currents
+INab = gNab * (V - ENa)
+ICab = gCab * (V - ECa)
+
+#********************************************
+# Exchanger and Pump Currents
+#********************************************
+
+parameters(INaKmax = ScalarParam(70.8253, unit="nl*s**-1", description="Max INaK current"),
+           kNaKK = ScalarParam(1, unit="mM"), #?
+           kNaKNa = ScalarParam(11, unit="mM"), #?
+           ICaPmax = ScalarParam(2.0, unit="nl*s**-1", description="Max ICaP current"),
+           kCaP = ScalarParam(0.0005, unit="mM"), #?
+           kNaCa = ScalarParam(0.0084, unit="mM"), #?
+           dNaCa = 0.0003, # ?
+           gam = 0.45, # ?
+           fCaNCX = 1) # ?
+
+# INaK
+INaK = INaKmax * Ko/(Ko+kNaKK) * Nass**1.5/(Nass**1.5+kNaKNa**1.5) * (V+150)/(V+200)
+
+# INaCa
+INaCa = kNaCa * ((exp(gam*V*F/R/T)*Nass**3*Cao - exp((gam-1)*V*F/R/T)*Nao**3*Cass*fCaNCX)/(1 + dNaCa*(Nao**3*Cass*fCaNCX + Nass**3*Cao)))
+
+# ICaP
+ICaP = ICaPmax*Cass/(kCaP+Cass)
+
+#********************************************
+# Funny current, If (Zorn-Pauly LAW fit)
+#********************************************
+
+states(y = ScalarParam(0.05500, description="Activation gate for If"))
+
+parameters(gIf = ScalarParam(1.0, unit="nS", description="Max conductance of If"),
+           Na_fratio = ScalarParam(0.2677, description="Na-ratio of total funny current"))
+
+y_inf = 1/(1 + exp((V+97.8274)/12.48025))
+
+tau_y = 1000.0/(0.00332*exp(-V/16.54103) + 23.71839*exp(V/16.54103))
+
+IfNa = gIf * y * Na_fratio * (V - ENa)
+IfK  = gIf * y * (1 - Na_fratio) * (V - EK)
+If = IfK + IfNa
+
+dy_dt = (y_inf - y)/tau_y
+
+#********************************************
+# Stimulus Current
+#********************************************
+
+parameters(stim_duration = ScalarParam(1, unit="ms", description="Duration of stim pulse"),
+           stim_period = ScalarParam(1000, unit="ms", description="Cycle length"),
+           stim_amplitude = ScalarParam(-2820, unit="uA", description="Magnitude of stimulus"),
+           stim_offset = ScalarParam(0, unit="ms", description="Time-shift in cycles"))
+
+past = floor(time/stim_period)*stim_period
+Istim = Conditional(And(Ge(time - past, stim_offset), Le(time - past, stim_offset + stim_duration), ), stim_amplitude, 0) # nA
+
+#********************************************
+# Internal Calcium Dynamics
+#********************************************
+
+states(# Cytosolic concentrations
+       Cai1 = ScalarParam(0.0001672, unit="mM"),
+       Cai2 = ScalarParam(0.0001670, unit="mM"),
+       Cai3 = ScalarParam(0.0001680, unit="mM"),
+       Cai4 = ScalarParam(0.0001719, unit="mM"),
+
+       # SR concentrations
+       CaSR1 = ScalarParam(0.5755, unit="mM"),
+       CaSR2 = ScalarParam(0.5664, unit="mM"),
+       CaSR3 = ScalarParam(0.5535, unit="mM"),
+       CaSR4 = ScalarParam(0.5428, unit="mM"),
+
+       # SERCA concentrations
+       SERCACa1  = ScalarParam(0.005351, unit="mM"),
+       SERCACa2  = ScalarParam(0.005213, unit="mM"),
+       SERCACa3  = ScalarParam(0.005020, unit="mM"),
+       SERCACass = ScalarParam(0.004891, unit="mM"),
+
+       # Ryanodine receptor gating variables
+       RyRoss = 0.00005934,
+       RyRo1 = 0.0001916,
+       RyRo2 = 0.0001485,
+       RyRo3 = 0.0001010,
+
+       RyRcss = 0.9999,
+       RyRc1 = 0.9970,
+       RyRc2 = 0.9985,
+       RyRc3 = 0.9993,
+
+       RyRass = 0.2453,
+       RyRa1 = 0.2033,
+       RyRa2 = 0.2106,
+       RyRa3 = 0.2229)
+
+parameters(# Diffusion and Ca buffering
+           DCa = ScalarParam(0.780, unit="um/ms", description="Free diffusion coefficient for Ca"), 
+           DCaSR = ScalarParam(0.044, unit="um/ms", description="Free diffusion coefficient for Ca in SR"), 
+           DCaBm = ScalarParam(0.025, unit="um/ms", description="Diffusion coefficient for Ca-buffer complex"), 
+           BCa = ScalarParam(0.024, unit="uM", description="Total arbitrary calcium buffer concentration"), 
+           SLlow = ScalarParam(165, unit="mM", description="Phospolipid concentration (low-affinity sites)"), 
+           SLhigh = ScalarParam(13, unit="mM", description="Phospolipid concentration (high-affinity sites)"), 
+           KdBCa = ScalarParam(0.00238, unit="mM", description="Dissociation constant for arbitrary cytosol Ca buffer"), 
+           KdSLlow = ScalarParam(1.1, unit="mM", description="Dissociation constant for low-affinity phospholipid sites"), 
+           KdSLhigh = ScalarParam(0.013, unit="mM", description="Dissociation constant for high-affinity phospholipid sites"), 
+           CSQN = ScalarParam(6.7, unit="mM", description="Concentration of Calsequestrin"), 
+           KdCSQN = ScalarParam(0.8, unit="mM", description="Dissociation constant for calsequestrin"),
+
+           # Cell geometry
+           lcell = ScalarParam(122.051, unit="um", description="Length of cell"),
+           rjunct = ScalarParam(6.5, unit="um", description="Radius of bulk cytosol"),
+           dr = ScalarParam(1.625, unit="um", description="nSR width of the bulk cytosol compartments"),
+           tpore = ScalarParam(0.5, description="Transport-available porosity"),
+           SRratio = ScalarParam(0.0225, description="Volume ratio of bulk cytosol that is SR"),
+           Vss = ScalarParam(4.99232e-5, unit="nl", description="Volume of subspace"),
+
+           # Leak Current
+           kSRleak = ScalarParam(6e-6, unit="ms**-1"), # ?
+                
+           # RyR
+           RyRtauact = ScalarParam(18.75, unit="ms", description="RyR activation time constant"),
+           RyRtauactss = ScalarParam(5, unit="ms", description="RyR activation time constant in SS"),
+           RyRtauinact = ScalarParam(87.5, unit="ms", description="RyR inactivation time constant "),
+           RyRtauinactss = ScalarParam(15, unit="ms", description="RyR inactivation time constant in SS"),
+           RyRtauadapt = ScalarParam(1000, unit="ms", description="RyR adaptation time constant"),
+           RyRmax = ScalarParam(1e-3, unit="ms**-1", description="Max RyR flux"),
+           RyRmaxss = ScalarParam(0.625, unit="ms**-1", description="Max RyR flux in SS"),
+
+           # SERCA
+           k4 = ScalarParam(0.013, unit="ms**-1", description="Pump rate from SERCA to SR"),
+           base_phos = ScalarParam(0.1, description="Baseline phosphorylation"),
+           Kmf_PLBKO = 0.15e-3, # ?
+           Kmf_PLB = 0.12e-3, # ?
+           Kmf_SLN = 0.07e-3, # ?
+           Kmr_PLBKO = 2.5, # ?
+           Kmr_PLB = 0.88, # ?
+           Kmr_SLN = 0.5, # ?
+           cpumps = ScalarParam(30e-3, unit="mM", description="Concentration of pumps in cytosol volume"))
+
+#**** Cell Geometry **************************
+
+V1 = pi*dr*dr*lcell*tpore * 1e-6 
+V2 = 3*V1              
+V3 = 5*V1              
+V4 = 7*V1              
+
+VSR1 = SRratio * V1
+VSR2 = SRratio * V2
+VSR3 = SRratio * V3
+VSR4 = SRratio * V4
+
+Vnonjunct = 16*V1
+Vcytosol = Vnonjunct + Vss
+
+Aj_nj = (2*pi*rjunct*lcell*tpore) # Transport-available area between junct and nonjunct
+xj_nj = (0.02/2 + dr/2)           # Diffusion distance from center to center of junct to first njunct
+xj_nj_Nai = (0.02/2 + 2*dr)       # Diffusion distance from center of junct to center of njunct (between 2nd and 3rd njunct)
+
+
+#**** RyRs ***********************************
+
+# Activation Functions
+RyRainfss = 0.505-0.427/(1 + exp((Cass*1000-0.29)/0.082))
+RyRainf1  = 0.505-0.427/(1 + exp((Cai1*1000-0.29)/0.082))
+RyRainf2 =  0.505-0.427/(1 + exp((Cai2*1000-0.29)/0.082))
+RyRainf3 =  0.505-0.427/(1 + exp((Cai3*1000-0.29)/0.082))
+RyRoinfss = 1 - 1/(1 +  exp((Cass*1000-(RyRass + 0.22))/0.03))
+RyRoinf1  = 1 - 1/(1 +  exp((Cai1*1000-(RyRa1  + 0.22))/0.03))
+RyRoinf2  = 1 - 1/(1 +  exp((Cai2*1000-(RyRa2  + 0.22))/0.03))
+RyRoinf3  = 1 - 1/(1 +  exp((Cai3*1000-(RyRa3  + 0.22))/0.03))
+RyRcinfss = 1/(1 + exp((Cass*1000-(RyRass + 0.02))/0.01))
+RyRcinf1  = 1/(1 + exp((Cai1*1000-(RyRa1  + 0.02))/0.01))
+RyRcinf2  = 1/(1 + exp((Cai2*1000-(RyRa2  + 0.02))/0.01))
+RyRcinf3  = 1/(1 + exp((Cai3*1000-(RyRa3  + 0.02))/0.01))
+
+# Other expressions
+RyRSRCass = 1 - 1/(1+exp((CaSR4-0.3)/0.1))
+RyRSRCa1  = 1 - 1/(1+exp((CaSR1-0.3)/0.1))
+RyRSRCa2  = 1 - 1/(1+exp((CaSR2-0.3)/0.1))
+RyRSRCa3  = 1 - 1/(1+exp((CaSR3-0.3)/0.1))
+
+# Release currents, unit: mmol/ms
+Jrelss = RyRmaxss * Vss * RyRoss * RyRcss * RyRSRCass * (CaSR4 -  Cass) 
+Jrel1  = RyRmax   * V1  * RyRo1  * RyRc1  * RyRSRCa1  * (CaSR1 -  Cai1) 
+Jrel2  = RyRmax   * V2  * RyRo2  * RyRc2  * RyRSRCa2  * (CaSR2 -  Cai2) 
+Jrel3  = RyRmax   * V3  * RyRo3  * RyRc3  * RyRSRCa3  * (CaSR3 -  Cai3)
+
+# Derivatives
+dRyRoss_dt = (RyRoinfss - RyRoss)/RyRtauactss
+dRyRo1_dt  = (RyRoinf1  - RyRo1) /RyRtauact
+dRyRo2_dt  = (RyRoinf2  - RyRo2) /RyRtauact
+dRyRo3_dt  = (RyRoinf3  - RyRo3) /RyRtauact
+dRyRcss_dt = (RyRcinfss - RyRcss)/RyRtauinactss
+dRyRc1_dt  = (RyRcinf1  - RyRc1) /RyRtauinact
+dRyRc2_dt  = (RyRcinf2  - RyRc2) /RyRtauinact
+dRyRc3_dt  = (RyRcinf3  - RyRc3) /RyRtauinact
+dRyRass_dt = (RyRainfss - RyRass)/RyRtauadapt
+dRyRa1_dt  = (RyRainf1  - RyRa1) /RyRtauadapt
+dRyRa2_dt  = (RyRainf2  - RyRa2) /RyRtauadapt
+dRyRa3_dt  = (RyRainf3  - RyRa3) /RyRtauadapt
+
+#**** Ca Bufffering **************************
+
+betass = 1/(1 + SLlow*KdSLlow/(Cass + KdSLlow)**2 + SLhigh*KdSLhigh/(Cass + KdSLhigh)**2 + BCa*KdBCa/(Cass + KdBCa)**2)
+gammai1 = BCa*KdBCa/(Cai1 + KdBCa)**2
+gammai2 = BCa*KdBCa/(Cai2 + KdBCa)**2
+gammai3 = BCa*KdBCa/(Cai3 + KdBCa)**2
+gammai4 = BCa*KdBCa/(Cai4 + KdBCa)**2
+betai1  = 1/(1 + gammai1)
+betai2  = 1/(1 + gammai2)
+betai3  = 1/(1 + gammai3)
+betai4  = 1/(1 + gammai4)
+betaSR1 = 1/(1 + CSQN*KdCSQN/(CaSR1 + KdCSQN)**2)
+betaSR2 = 1/(1 + CSQN*KdCSQN/(CaSR2 + KdCSQN)**2)
+betaSR3 = 1/(1 + CSQN*KdCSQN/(CaSR3 + KdCSQN)**2)
+betaSR4 = 1/(1 + CSQN*KdCSQN/(CaSR4 + KdCSQN)**2)
+
+#**** Diffusion, unit = mM*ms**-1 ********
+
+JdiffSR1 = betaSR1 * DCaSR * (3*CaSR2 -  3*CaSR1)          /(2*dr**2)
+JdiffSR2 = betaSR2 * DCaSR * (5*CaSR3 -  8*CaSR2 + 3*CaSR1)/(4*dr**2)
+JdiffSR3 = betaSR3 * DCaSR * (7*CaSR4 - 12*CaSR3 + 5*CaSR2)/(6*dr**2)
+JdiffSR4 = betaSR4 * DCaSR *         (-  7*CaSR4 + 7*CaSR3)/(8*dr**2)
+
+Jdiff1 = betai1*(DCa+gammai1*DCaBm)*(3*Cai2- 3*Cai1)       /(2*dr**2) - 2*betai1*gammai1*DCaBm/(KdBCa+Cai1)*((Cai2-Cai1)/2/dr)**2
+Jdiff2 = betai2*(DCa+gammai2*DCaBm)*(5*Cai3- 8*Cai2+3*Cai1)/(4*dr**2) - 2*betai2*gammai2*DCaBm/(KdBCa+Cai2)*((Cai3-Cai1)/2/dr)**2
+Jdiff3 = betai3*(DCa+gammai3*DCaBm)*(7*Cai4-12*Cai3+5*Cai2)/(6*dr**2) - 2*betai3*gammai3*DCaBm/(KdBCa+Cai3)*((Cai4-Cai2)/2/dr)**2
+Jdiff4 = betai4*(DCa+gammai4*DCaBm)*      (- 7*Cai4+7*Cai3)/(8*dr**2) - 2*betai4*gammai4*DCaBm/(KdBCa+Cai4)*((Cai4-Cai3)/2/dr)**2
+
+# Unit: mmol*ms**-1
+Jdiffss = DCa*Aj_nj/xj_nj*(Cass-Cai4) * 1e-6
+
+#**** Leak Currents nl*mmol*ms**-1 **************
+
+JSRleak1 = kSRleak * (CaSR1 - Cai1) * V1
+JSRleak2 = kSRleak * (CaSR2 - Cai2) * V2
+JSRleak3 = kSRleak * (CaSR3 - Cai3) * V3
+JSRleakss = kSRleak * (CaSR4 - Cass) * Vss
+
+#**** SERCA **********************************
+
+# Pump rates
+SERCAKmf = Kmf_PLBKO + Kmf_PLB * (1 - base_phos) + Kmf_SLN * (1 - base_phos)
+SERCAKmr = Kmr_PLBKO - Kmr_PLB * (1 - base_phos) - Kmr_SLN * (1 - base_phos)
+
+k3 = k4 / SERCAKmr**2
+k1 = 1000**2 * k4
+k2 = k1 * SERCAKmf**2
+
+# Fluxes, unit: mmol*ms**-1
+JSERCASR1  = (-k3*CaSR1**2*(cpumps-SERCACa1)  + k4*SERCACa1)*V1*2
+JSERCASR2  = (-k3*CaSR2**2*(cpumps-SERCACa2)  + k4*SERCACa2)*V2*2  
+JSERCASR3  = (-k3*CaSR3**2*(cpumps-SERCACa3)  + k4*SERCACa3)*V3*2
+JSERCASRss = (-k3*CaSR4**2*(cpumps-SERCACass) + k4*SERCACass)*Vss*2 
+
+JbulkSERCA1  = (k1*Cai1**2*(cpumps-SERCACa1)  - k2*SERCACa1)*V1*2
+JbulkSERCA2  = (k1*Cai2**2*(cpumps-SERCACa2)  - k2*SERCACa2)*V2*2
+JbulkSERCA3  = (k1*Cai3**2*(cpumps-SERCACa3)  - k2*SERCACa3)*V3*2
+JbulkSERCAss = (k1*Cass**2*(cpumps-SERCACass) - k2*SERCACass)*Vss*2
+
+dSERCACa1_dt  = 0.5*(JbulkSERCA1  - JSERCASR1)/V1
+dSERCACa2_dt  = 0.5*(JbulkSERCA2  - JSERCASR2)/V2
+dSERCACa3_dt  = 0.5*(JbulkSERCA3  - JSERCASR3)/V3
+dSERCACass_dt = 0.5*(JbulkSERCAss - JSERCASRss)/Vss
+
+#**** Compartment derivatives ***************
+
+JCa1 = -JbulkSERCA1 + JSRleak1 + Jrel1
+JCa2 = -JbulkSERCA2 + JSRleak2 + Jrel2
+JCa3 = -JbulkSERCA3 + JSRleak3 + Jrel3
+JCa4 = Jdiffss
+JCass = -Jdiffss + JSRleakss - JbulkSERCAss + Jrelss
+
+JSRCa1 = JSERCASR1 - JSRleak1 - Jrel1
+JSRCa2 = JSERCASR2 - JSRleak2 - Jrel2
+JSRCa3 = JSERCASR3 - JSRleak3 - Jrel3
+JSRCa4 = JSERCASRss - JSRleakss - Jrelss
+
+dCai1_dt = Jdiff1 + JCa1/V1*betai1
+dCai2_dt = Jdiff2 + JCa2/V2*betai2
+dCai3_dt = Jdiff3 + JCa3/V3*betai3
+dCai4_dt = Jdiff4 + JCa4/V4*betai4
+
+dCaSR1_dt = JdiffSR1 + betaSR1*JSRCa1/VSR1
+dCaSR2_dt = JdiffSR2 + betaSR2*JSRCa2/VSR2 
+dCaSR3_dt = JdiffSR3 + betaSR3*JSRCa3/VSR3 
+dCaSR4_dt = JdiffSR4 + betaSR4*JSRCa4/VSR4 
+
+#********************************************
+# Sodium Diffusion current
+#********************************************
+
+parameters(DNa = ScalarParam(0.00012, unit="um*ms**-1"),
+           BNa = ScalarParam(1.1319, unit="mM"),
+           KdBNa = ScalarParam(10, unit="mM"))
+
+betaNass = (1 + BNa*KdBNa/(Nass + KdBNa)**2)**(-1)
+
+# Unit: mmol*ms**-1
+JNa = DNa * Aj_nj / xj_nj_Nai * (Nass - Nai)* 1e-6
+
+#********************************************
+# Membrane potential and ion concentrations
+#********************************************
+
+# Change in ion concentrations
+dV_dt = -1e-3*(INa + ICaL + It + IKur + IK1 + IKr + IKs + INab + ICab + INaK + ICaP + INaCa + If + Istim)/Cm
+dCass_dt = betass*(JCass + 1e-3*(-ICaL - ICab - ICaP + 2*INaCa)/(2*F))/Vss
+dNass_dt = betaNass*(-JNa - 1e-3*(INa + INab + 3*INaK + 3*INaCa + IfNa)/F)/Vss
+dNai_dt = JNa/Vnonjunct
+dKi_dt = -1e-3*(It + IKur + IK1 + IKr + IKs - 2*INaK + IfK + Istim) / (Vcytosol*F)

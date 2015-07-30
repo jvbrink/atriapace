@@ -70,7 +70,7 @@ class TissueSquare:
 
         # Set the stimulus parameter field
         V = VectorFunctionSpace(self.domain, 'CG', 1)
-        stimulus = Expression(("near(x[0],0)*amp","offset"), amp=self.stim_amp, offset=0)
+        stimulus = Expression(("near(x[0],0)*(x[1] < 0.1)*amp","offset"), amp=self.stim_amp, offset=0)
         stimulus = interpolate(stimulus, V).vector().array()
         
         # Apply the stimulus

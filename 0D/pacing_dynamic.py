@@ -81,8 +81,8 @@ if __name__ == '__main__':
     ### Example of use
     # ode = 'FK_cAF'
     # ode = 'hAM_KSMT_cAF'
-    # ode = 'FK_nSR'
-    ode = 'hAM_KSMT_nSR'
+    ode = 'FK_nSR'
+    #ode = 'hAM_KSMT_nSR'
 
     BCL_range = range(1000, 295, -5)
     dt = 0.01
