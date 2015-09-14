@@ -83,6 +83,7 @@ if __name__ == '__main__':
     # ode = 'hAM_KSMT_cAF'
     ode = 'FK_nSR'
     #ode = 'hAM_KSMT_nSR'
+    #ode = 'K2014_nSR'
 
     BCL_range = range(1000, 295, -5)
     dt = 0.01

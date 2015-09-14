@@ -18,14 +18,14 @@ def plot_ap(ode, BCL=1000, dt=0.1, offset=10, savefig='', odepath="../ode/"):
         index['BCL'] = module.parameter_indices("stim_period")
         index['offset'] = module.parameter_indices("stim_offset")
 
-        # Load in inital state from steadycycle
-        try:
-            states = np.load(scpath+"%s_BCL%d.npy" % (ode, BCL))
-        except:
-            print "Steady cycle at BCL=%d for ODE model: %s not found." % (BCL, ode)
-            print "Pacing 0D cell model to find it, this may take a minute."
-            states = find_steadycycle([module, forward, ode], BCL, dt, odepath=odepath, scpath=scpath)
-            print "Steady cycle found, proceeding to simulate action potential."
+        # # Load in inital state from steadycycle
+        # try:
+        #     states = np.load(scpath+"%s_BCL%d.npy" % (ode, BCL))
+        # except:
+        #     print "Steady cycle at BCL=%d for ODE model: %s not found." % (BCL, ode)
+        #     print "Pacing 0D cell model to find it, this may take a minute."
+        #     states = find_steadycycle([module, forward, ode], BCL, dt, odepath=odepath, scpath=scpath)
+        #     print "Steady cycle found, proceeding to simulate action potential."
 
         # Set ODE parameters
         model_params[index['BCL']] = BCL
@@ -67,14 +67,16 @@ def compare_ap(odes, BCL, dt, offset=10, savefig='', odepath='../ode/', scpath="
         index['BCL'] = module.parameter_indices("stim_period")
         index['offset'] = module.parameter_indices("stim_offset")
 
-        # Load in inital state from steadycycle
-        try:
-            states = np.load(scpath+"%s_BCL%d.npy" % (ode, BCL))
-        except:
-            print "Steady cycle at BCL=%d for ODE model: %s not found." % (BCL, ode)
-            print "Pacing 0D cell model to find it, this may take a minute."
-            states = find_steadycycle([module, forward, ode], BCL, dt, odepath=odepath, scpath=scpath)
-            print "Steady cycle found, proceeding to simulate action potential."
+        states = module.init_state_values()
+
+        # # Load in inital state from steadycycle
+        # try:
+        #     states = np.load(scpath+"%s_BCL%d.npy" % (ode, BCL))
+        # except:
+        #     print "Steady cycle at BCL=%d for ODE model: %s not found." % (BCL, ode)
+        #     print "Pacing 0D cell model to find it, this may take a minute."
+        #     states = find_steadycycle([module, forward, ode], BCL, dt, odepath=odepath, scpath=scpath)
+        #     print "Steady cycle found, proceeding to simulate action potential."
 
         # Set ODE parameters
         model_params[index['BCL']] = BCL
@@ -90,9 +92,9 @@ def compare_ap(odes, BCL, dt, offset=10, savefig='', odepath='../ode/', scpath="
             t += dt
 
         # Rescale the results
-        # V = np.array(V)
-        # V -= min(V)
-        # V /= np.max(V)
+        V = np.array(V)
+        V -= min(V)
+        V /= np.max(V)
 
         # Plot the results
         t = np.linspace(0, tstop, len(V))
@@ -100,20 +102,26 @@ def compare_ap(odes, BCL, dt, offset=10, savefig='', odepath='../ode/', scpath="
 
     plt.xlabel(r"Time [ms]", fontsize=20)
     plt.ylabel(r"V [rel.]", fontsize=20)
-    plt.title(r'MAP', fontsize=20)
+    plt.title(r'Action Potential', fontsize=20)
     plt.axis([0, tstop, -0.1, 1.1])
     plt.grid()
-    plt.legend(odes, prop={'size':20})
-    plt.show()
+    #plt.legend(odes, prop={'size':20})
+    #plt.show()
     if savefig: plt.savefig(savefig)
-    plt.close()
+    #plt.close()
 
 if __name__ == '__main__':
-    odes_nSR = ['FK_nSR', 'broken']
-    odes_cAF = ['hAM_KSMT_cAF', 'FK_cAF']
+    odes_FK = ['FK_nSR', 'FK_breakup']
+    odes_KKT = ['K2014_nSR', 'K2014_breakup']
     BCL = 500
     dt = 0.01
 
-    compare_ap(odes_nSR, BCL, dt)
-#    compare_ap(odes_cAF, BCL, dt)
+    compare_ap(odes_FK, BCL, dt)
+    plt.legend(["FK nSR", "FK Breakup"], fontsize=20)
+    plt.savefig("FK_breakup_comparison.png")
+    plt.show()
 
+    compare_ap(odes_KKT, BCL, dt)
+    plt.legend(["Koivumaki nSR", "Koivumaki Breakup"], fontsize=20)
+    plt.savefig("KKT_breakup_comparison.png")
+    plt.show()

@@ -73,23 +73,6 @@ def pacing_S1S2(ode, S1, S2_range, dt, threshold=0.1, offset=10, plot=False,
 
         return APD, DI
 
-        if plot:
-            # Plot action potential
-            tarray = np.linspace(0, BCL, len(V))
-            plt.plot(tarray, V, linewidth=1.5)
-
-            # Find intersections and plot them
-            above = tarray[V > Vthresh]
-            lt, ht = above[0], above[-1]
-
-            plt.plot([lt, ht], [Vthresh, Vthresh], 'o-', linewidth=1.5)
-            plt.axis([0, BCL+offset, vmin*1.05, vmax*1.05])
-            plt.grid()
-            plt.xlabel('Time [ms]')
-            plt.ylabel('V [rel.]')
-            plt.show()
-
-
     for S2 in S2_range:
         APD, DI = pulse(S2)
         print "S2: %g,\t APD: %g,\t DI: %g" % (S2, APD, DI)

@@ -1,4 +1,4 @@
-from setup0D import create_module
+from setup0D import create_module, find_steadycycle
 import numpy as np 
 import matplotlib.pyplot as plt 
 
@@ -31,9 +31,9 @@ def effective_refractatory_period(ode, BCL_range, dt=0.01, erpstart=50, threshol
         try:
             init_states = np.load(scpath+"%s_BCL%d.npy" % (ode, BCL))
         except:
-            print "Steady cycle at S1=%d for ODE model: %s not found." % (S1, ode)
+            print "Steady cycle at S1=%d for ODE model: %s not found." % (BCL, ode)
             print "Pacing 0D cell model to find it, this may take a minute."
-            states = find_steadycycle([module, forward, ode], BCL, dt, odepath=odepath, scpath=scpath)
+            init_states = find_steadycycle([module, forward, ode], BCL, dt, odepath=odepath, scpath=scpath)
             print "Steady cycle found, proceeding to do dynamic pacing."
 
         t = 0; tstop = BCL
@@ -43,7 +43,7 @@ def effective_refractatory_period(ode, BCL_range, dt=0.01, erpstart=50, threshol
             forward(states, t, dt, model_params)
             t += dt
             V.append(states[index['V']])
-        Vpeak = max(V)
+        Vpeak = np.max(V) - np.min(V)
 
         # S2 pulses 
         for S2 in np.arange(ERP, BCL, 0.1):
@@ -61,17 +61,21 @@ def effective_refractatory_period(ode, BCL_range, dt=0.01, erpstart=50, threshol
                 t += dt
                 V.append(states[index['V']])
 
-            if np.max(V) > threshold*Vpeak:
+            if np.max(V) - np.min(V) > threshold*Vpeak:
                 ERP = S2
                 print "BCL: %f,  ERP: %f" % (BCL, ERP)
                 break
+            else:
+                print S2, np.max(V) - np.min(V)
+
 
 if __name__ == '__main__':
     # BCL_range = xrange(300, 1005, 5)
-    BCL_range = range(300, 1000, 5)
-    dt = 0.01
+    #BCL_range = range(300, 1000, 5)
+    BCL_range = range(1000, 950, -50)
+    dt = 0.1
 
-    effective_refractatory_period('hAM_KSMT_nSR', BCL_range, dt, erpstart=180)
+    effective_refractatory_period('FK_breakup', BCL_range, dt, erpstart=130)
     #effective_refractatory_period('hAM_KSMT_cAF', BCL_range, dt, erpstart=180)
     #effective_refractatory_period('FK_nSR', BCL_range, dt, erpstart=50)
     #effective_refractatory_period('FK_cAF', BCL_range, dt, erpstart=50)

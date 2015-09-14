@@ -122,5 +122,5 @@ if __name__ == '__main__':
     #solver = TissueStrand('FK_nSR', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
     #solver = TissueStrand('FK_cAF', 0.077, stim_amp=-0.8, threshold=0.5, plot_args={'range_min':0.0, 'range_max':1.0})
 
-    solver.pulse(1000, dt=0.1, num_of_pulses=5, liveplot=True)
+    #solver.pulse(1000, dt=0.1, num_of_pulses=5, liveplot=True)
 
