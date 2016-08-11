@@ -112,6 +112,6 @@ if __name__ == '__main__':
     plt.grid()
     plt.title("Action potential")
     plt.legend([u"Koivumäki nSR", u"Koivumäki cAF"])
-    plt.savefig('../fig/action_nSR_cAF_potential.png')
+    plt.savefig('../fig/single_action_potential.pdf')
     plt.show()
     
